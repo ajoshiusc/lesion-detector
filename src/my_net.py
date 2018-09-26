@@ -4,6 +4,7 @@ import os
 import skimage.io as io
 import skimage.transform as trans
 import numpy as np
+import matplotlib.pyplot as plt
 from keras.models import *
 from keras.layers import *
 from keras.optimizers import *
@@ -26,19 +27,16 @@ x_train_noisy = np.clip(x_train_noisy, 0., 1.)
 x_test_noisy = np.clip(x_test_noisy, 0., 1.)
 
 n = 10
-import matplotlib.pyplot as plt
+
 plt.figure(figsize=(20, 2))
 for i in range(n):
     ax = plt.subplot(1, n, i+1)
-    plt.imshow(x_test_noisy[i].reshape(28, 28))
+    plt.imshow(x_test_noisy[i].reshape(32, 32))
     plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 plt.show()
 
-from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D
-from keras.models import Model
-from keras import backend as K
 
 inputs = Input(shape=(x_train.shape[2], x_train.shape[2], 1))  # adapt this if using `channels_first` image data format
 conv1 = Conv2D(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
@@ -93,14 +91,14 @@ plt.figure(figsize=(20, 4))
 for i in range(n):
     # display original
     ax = plt.subplot(2, n, i+1)
-    plt.imshow(x_test_noisy[i].reshape(28, 28))
+    plt.imshow(x_test_noisy[i].reshape(32, 32))
     plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 
     # display reconstruction
     ax = plt.subplot(2, n, i + n+1)
-    plt.imshow(decoded_imgs[i].reshape(28, 28))
+    plt.imshow(decoded_imgs[i].reshape(32, 32))
     plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
