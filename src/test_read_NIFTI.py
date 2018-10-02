@@ -8,7 +8,7 @@ from keras.callbacks import TensorBoard
 first_path='/data_disk/HCP_All'
 sublist=os.listdir(first_path)
 sublist.sort()
-favindex =list(range(1,20))
+favindex =list(range(1,11))
 favlist= [sublist[i] for i in favindex]
 ## read data and divide it to 32,32,32 patches
 window_size=32
@@ -34,7 +34,7 @@ for filename in favlist:
         data_all=np.concatenate((data_all,img_newshape))
 
 model=auto_encoder(window_size)
-training_percent=0.9*data_all.shape[0]
+training_percent=9*temp
 x_train=data_all[0:training_percent,:,:,:,:]
 x_test=data_all[training_percent:,:,:,:,:]
 
