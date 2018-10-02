@@ -21,6 +21,6 @@ def auto_encoder(input_size):
     decoded = Conv3D(1, (3, 3, 3), activation='sigmoid', padding='same')(x)
 
     model = Model(input_img, decoded)
-    model.compile(optimizer='adadelta', loss='mean_squares_error')
+    model.compile(optimizer='adadelta', loss='mean_squared_error')
 
     return model
