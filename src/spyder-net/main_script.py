@@ -10,8 +10,8 @@ from spyder_net import train_model
 from data_utils import read_data
 
 def main():
-    """ Main script that calls the functions object"""
-    data_dir = '/home/ajoshi'
+    """ Main script that calls the functions objects"""
+    data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
 
 
     model = train_model(data_dir=train_data_dir, csv_file=csv_file)
