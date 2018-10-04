@@ -1,6 +1,7 @@
 import glob
 import nilearn as nl
 import os
+import numpy as np
 
 
 def read_data(study_dir, nsub, npatch_perslice):
@@ -10,9 +11,11 @@ def read_data(study_dir, nsub, npatch_perslice):
         t2file = os.path.join(subj,'T2.nii.gz')
         fl = os.path.join(subj,'FLAIR.nii.gz')
 
-        t1 = nl.load(t1file)
-        t2 = nl.load(t2file)
-        flair = nl.load(flfile)
+        t1 = nl.load(t1file).get_data()
+        t2 = nl.load(t2file).get_data()
+        flair = nl.load(flfile).get_data()
+
+        imgs = np.stack((t1,t2,flair), axis = 3)
 
         # Read coronal slices
 
