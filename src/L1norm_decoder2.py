@@ -13,7 +13,7 @@ x_test = x_test.astype('float32') / 255.
 x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))  # adapt this if using `channels_first` image data format
 x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))  # adapt this if using `channels_first` image data format
 
-noise_factor = 0.01
+noise_factor = 0.5
 x_train_noisy = x_train + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
 x_test_noisy = x_test + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_test.shape) 
 
@@ -49,16 +49,16 @@ x = UpSampling2D((2, 2))(x)
 decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
 
 autoencoder = Model(input_img, decoded)
-opt=optimizers.adadelta(0.1)
-autoencoder.compile(opt, loss='logcosh')
+opt=optimizers.adadelta(lr=1)
+autoencoder.compile(opt, loss='mean_squared_error')
 
 from keras.callbacks import TensorBoard
 
-autoencoder.fit(x_train, x_train,
-                epochs=2,
+autoencoder.fit(x_train_noisy, x_train_noisy,
+                epochs=3,
                 batch_size=128,
                 shuffle=True,
-                validation_data=(x_test, x_test),
+                validation_data=(x_test_noisy, x_test_noisy),
                callbacks=[TensorBoard(log_dir='/tmp/tb', histogram_freq=0, write_graph=False)])
 
 

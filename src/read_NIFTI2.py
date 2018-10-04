@@ -7,17 +7,17 @@ second_path='T1w'
 data_name='T1w_acpc_dc_restore_brain.nii.gz'
 subnum=5
 window_size=35
-patch_num=100
+patch_num=10
 ## patch data
 img_newshape=patch_maker(first_path,second_path,data_name,subnum,window_size,patch_num)
 ## define test and train
-x_train = img_newshape(img_newshape[0:patch_num-1,:,:,:])
-x_test = img_newshape(img_newshape[patch_num:,:,:,:])
+x_train = img_newshape[0:patch_num+1,:,:,:]
+x_test = img_newshape[patch_num+1:,:,:,:]
 ## fit the data
 model=auto_encoder(window_size)
 model.fit(x_train, x_train,
-                epochs=3,
-                batch_size=256,
+                epochs=2,
+                batch_size=128,
                 shuffle=True,
                 validation_data=(x_test, x_test),
                callbacks=[TensorBoard(log_dir='/tmp/tb', histogram_freq=0, write_graph=False)])
