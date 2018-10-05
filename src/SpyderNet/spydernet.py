@@ -3,6 +3,8 @@ from keras.models import Input, Model
 from keras import optimizers
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 import numpy as np
+from keras.callbacks import TensorBoard
+from time import time
 
 
 def encoder(isize, namestr):
@@ -57,6 +59,8 @@ def train_model(data):
     sz = np.array(data.shape[1:4])
     sz[2] = 1
     autoenc = spyder_net(isize=sz, n_channel=data.shape[3])
+    tensorboard = TensorBoard(log_dir="logs/{}".format(time()))
+
     history = autoenc.fit([
         data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
     ], [
@@ -66,8 +70,8 @@ def train_model(data):
                           epochs=200,
                           verbose=1,
                           shuffle=True,
-                          validation_split=0.2)
-    #        callbacks=[model_checkpoint])
+                          validation_split=0.2,
+                          callbacks=[tensorboard])
 
     return autoenc
 
