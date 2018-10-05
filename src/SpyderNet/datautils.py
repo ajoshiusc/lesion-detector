@@ -4,8 +4,10 @@ import os
 import numpy as np
 from sklearn.feature_extraction.image import extract_patches_2d
 
-def read_data(study_dir, nsub, npatch_perslice):
+
+def read_data(study_dir, nsub, psize, npatch_perslice):
     dirlist = glob.glob(study_dir + '/TBI*')
+    patch_data = np.zeros((0, 0, 0, 0))
     for subj in dirlist:
         t1file = os.path.join(subj, 'T1.nii.gz')
         t2file = os.path.join(subj, 'T2.nii.gz')
@@ -22,10 +24,20 @@ def read_data(study_dir, nsub, npatch_perslice):
 
         imgs = np.stack((t1, t2, flair), axis=3)
 
+        for sliceno in range(imgs.shape[2]):
+            ptch = extract_patches_2d(
+                image=imgs[:, :, sliceno, :],
+                patch_size=psize,
+                max_patches=npatch_perslice)
+            if patch_data.shape[0] == 0:
+                patch_data = ptch
+            else:
+                patch_data = np.concatenate((patch_data, ptch), axis=0)
+
         # Read coronal slices
 
         #        create image
 
         #        create random patches
 
-        return patch_data  # npatch x width x height x channels
+    return patch_data  # npatch x width x height x channels
