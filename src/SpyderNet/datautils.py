@@ -7,6 +7,7 @@ from sklearn.feature_extraction.image import extract_patches_2d
 
 def read_data(study_dir, nsub, psize, npatch_perslice):
     dirlist = glob.glob(study_dir + '/TBI*')
+    dirlist=dirlist[:nsub]
     patch_data = np.zeros((0, 0, 0, 0))
     for subj in dirlist:
         t1file = os.path.join(subj, 'T1.nii.gz')

@@ -8,9 +8,9 @@ def main():
     data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
 
     train_data = read_data(
-        study_dir=data_dir, nsub=5, psize=[16, 16], npatch_perslice=8)
+        study_dir=data_dir, nsub=5, psize=[16, 16], npatch_perslice=64)
 
-    model = train_model(data_dir=train_data_dir, csv_file=csv_file)
+    model = train_model(train_data)
 
 
 if __name__ == "__main__":
