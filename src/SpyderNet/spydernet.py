@@ -9,27 +9,26 @@ def encoder(isize, namestr):
     input_img = Input(shape=isize)  # tensorflow follows NHWC (HWC here)
 
     x = Conv2D(
-        8, (3, 3), activation='relu', padding='same',
+        4, (3, 3), activation='relu', padding='same',
         name=namestr + 'enc1')(input_img)
     #    x = MaxPooling2D((2, 2), padding='same')(x)
     x = Conv2D(
-        8, (3, 3), activation='relu', padding='same',
-        name=namestr + 'enc2')(x)
-    #   encoded = MaxPooling2D((2, 2), padding='same')(x)
+        4, (3, 3), activation='relu', padding='same', name=namestr + 'enc2')(x)
+    #   x = MaxPooling2D((2, 2), padding='same')(x)
 
     return input_img, x
 
 
 def decoder(input_enc, namestr):
     x = Conv2D(
-        8, (3, 3), activation='relu', padding='same',
+        4, (3, 3), activation='relu', padding='same',
         name=namestr + 'dec1')(input_enc)
-    #   x = UpSampling2D((2, 2))(x)
-    x = Conv2D(
-        8, (3, 3), activation='relu', padding='same',
-        name=namestr + 'dec2')(x)
     #    x = UpSampling2D((2, 2))(x)
-    decoded = Conv2D(1, (3, 3), activation='relu', padding='same')(x)
+    x = Conv2D(
+        4, (3, 3), activation='relu', padding='same', name=namestr + 'dec2')(x)
+    #    x = UpSampling2D((2, 2))(x)
+    decoded = Conv2D(
+        1, (3, 3), activation='relu', padding='same', name=namestr + 'dec3')(x)
     return decoded
 
 
@@ -48,7 +47,7 @@ def spyder_net(isize, n_channel):
 
     print("==Defining Model  ==")
     autoencoder = Model(inputs=[I1, I2, I3], outputs=[I_1, I_2, I_3])
-    opt = optimizers.adam() #adadelta(lr=1)
+    opt = optimizers.adam()  #adadelta(lr=1)
     autoencoder.compile(opt, loss='mean_squared_error')
 
     return autoencoder
@@ -64,7 +63,7 @@ def train_model(data):
         data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
     ],
                           batch_size=256,
-                          epochs=20,
+                          epochs=200,
                           verbose=1,
                           shuffle=True,
                           validation_split=0.2)
