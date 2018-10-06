@@ -7,7 +7,7 @@ from sklearn.feature_extraction.image import extract_patches_2d
 
 def read_data(study_dir, nsub, psize, npatch_perslice):
     dirlist = glob.glob(study_dir + '/TBI*')
-    dirlist=dirlist[:nsub]
+    subno=0
     patch_data = np.zeros((0, 0, 0, 0))
     for subj in dirlist:
         t1file = os.path.join(subj, 'T1.nii.gz')
@@ -18,6 +18,10 @@ def read_data(study_dir, nsub, psize, npatch_perslice):
                 and os.path.isfile(fl)):
             continue
 
+        if subno < nsub:
+            subno = subno + 1
+        else:
+            break
         # Read the three images
         t1 = nl.image.load_img(t1file).get_data()
         t2 = nl.image.load_img(t2file).get_data()
