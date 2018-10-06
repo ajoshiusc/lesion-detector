@@ -7,7 +7,7 @@ from sklearn.feature_extraction.image import extract_patches_2d
 
 def read_data(study_dir, nsub, psize, npatch_perslice):
     dirlist = glob.glob(study_dir + '/TBI*')
-    subno=0
+    subno = 0
     patch_data = np.zeros((0, 0, 0, 0))
     for subj in dirlist:
         t1file = os.path.join(subj, 'T1.nii.gz')
@@ -26,6 +26,15 @@ def read_data(study_dir, nsub, psize, npatch_perslice):
         t1 = nl.image.load_img(t1file).get_data()
         t2 = nl.image.load_img(t2file).get_data()
         flair = nl.image.load_img(fl).get_data()
+
+        p = np.percentile(np.ravel(t1), 95)  #normalize to 95 percentile
+        t1 = np.float32(t1) / p
+
+        p = np.percentile(np.ravel(t2), 95)  #normalize to 95 percentile
+        t2 = np.float32(t2) / p
+
+        p = np.percentile(np.ravel(flair), 95)  #normalize to 95 percentile
+        flair = np.float32(flair) / p
 
         imgs = np.stack((t1, t2, flair), axis=3)
 
