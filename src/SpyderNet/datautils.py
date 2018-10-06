@@ -10,6 +10,7 @@ def read_data(study_dir, nsub, psize, npatch_perslice):
     subno = 0
     patch_data = np.zeros((0, 0, 0, 0))
     for subj in dirlist:
+
         t1file = os.path.join(subj, 'T1.nii.gz')
         t2file = os.path.join(subj, 'T2.nii.gz')
         fl = os.path.join(subj, 'FLAIR.nii.gz')
@@ -20,6 +21,7 @@ def read_data(study_dir, nsub, psize, npatch_perslice):
 
         if subno < nsub:
             subno = subno + 1
+            print("subject %d " % (subno))
         else:
             break
         # Read the three images
