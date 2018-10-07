@@ -1,3 +1,7 @@
+event*
+logs*
+*.npz
+logs/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
