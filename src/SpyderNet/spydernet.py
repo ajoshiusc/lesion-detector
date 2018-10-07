@@ -41,7 +41,7 @@ def spyder_net(isize, n_channel):
     I3, E3 = encoder(isize, 'i3')
 
     x = concatenate([E1, E2, E3], axis=-1)
-    x = Conv2D(1, (3, 3), activation='relu', padding='same')(x)
+    x = Conv2D(1, (3, 3), activation='relu', padding='same', name='Trunk1')(x)
 
     I_1 = decoder(x, 'd1')
     I_2 = decoder(x, 'd2')
@@ -67,7 +67,7 @@ def train_model(data):
         data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
     ],
                           batch_size=256,
-                          epochs=200,
+                          epochs=1,
                           verbose=1,
                           shuffle=True,
                           validation_split=0.2,
@@ -76,9 +76,20 @@ def train_model(data):
     return autoenc
 
 
-def test_model(model, data):
+def mod_indep_rep(model, data):
 
-    return predictions
+    layer_name = 'Trunk1'
+    intermediate_layer_model = Model(
+        inputs=model.input, outputs=model.get_layer(layer_name).output)
+    intermediate_output = intermediate_layer_model.predict([
+        data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
+    ])
+
+    pred = model.predict([
+        data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
+    ])
+
+    return intermediate_output, pred
 
 
 def get_neural_net(self, isize=[32, 32], subc_size=31870):
