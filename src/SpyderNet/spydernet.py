@@ -41,7 +41,7 @@ def spyder_net(isize, n_channel):
     I3, E3 = encoder(isize, 'i3')
 
     x = concatenate([E1, E2, E3], axis=-1)
-    x = Conv2D(1, (3, 3), activation='relu', padding='same', name='Trunk1')(x)
+    x = Conv2D(3, (3, 3), activation='softmax', padding='same', name='Trunk1')(x)
 
     I_1 = decoder(x, 'd1')
     I_2 = decoder(x, 'd2')
