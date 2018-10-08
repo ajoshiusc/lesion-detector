@@ -67,7 +67,7 @@ def train_model(data):
         data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
     ],
                           batch_size=256,
-                          epochs=20,
+                          epochs=50,
                           verbose=1,
                           shuffle=True,
                           validation_split=0.2,
