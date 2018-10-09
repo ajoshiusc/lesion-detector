@@ -5,7 +5,7 @@ from keras.models import Model
 from keras import backend as K
 
 def auto_encoder(input_size):
-    input_img = Input(shape=(input_size, input_size,1))  # adapt this if using `channels_first` image data format
+    input_img = Input(shape=(input_size, input_size,3))  # adapt this if using `channels_first` image data format
 
     x = Conv2D(32, (3, 3), activation='relu', padding='same')(input_img)
     x = MaxPooling2D((2, 2), padding='same')(x)
