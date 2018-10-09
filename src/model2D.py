@@ -18,9 +18,10 @@ def auto_encoder(input_size):
     x = UpSampling2D((2, 2))(x)
     x = Conv2D(32, (3, 3,), activation='relu', padding='same')(x)
     x = UpSampling2D((2, 2))(x)
-    decoded = Conv2D(1, (2, 2), activation='sigmoid', padding='valid')(x)
+    decoded = Conv2D(3, (2, 2), activation='sigmoid', padding='valid')(x)
 
     model = Model(input_img, decoded)
-    model.compile(optimizer='adadelta', loss='mean_squared_error')
+    opt = optimizers.adadelta(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+    model.compile(optimizer=opt, loss='mean_squared_error')
 
     return model
