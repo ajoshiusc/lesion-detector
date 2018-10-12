@@ -1,0 +1,7 @@
+import os
+import numpy as numpy
+from nibabel.testing import data_path
+example_f = os.path.join(data_path,'example4d.nii.gz')
+import nibabel as nib
+img = nib.load(example_f)
+img.shap
