@@ -1,3 +1,4 @@
+from time import time
 from keras.datasets import mnist
 import numpy as np
 
@@ -31,7 +32,7 @@ from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D
 from keras.models import Model
 from keras import backend as K
 
-input_img = Input(shape=(x_train.shape[2], x_train.shape[2], 1))  # adapt this if using `channels_first` image data format
+input_img = Input(shape=(x_train.shape[2], x_train.shape[2], 3))  # adapt this if using `channels_first` image data format
 
 x = Conv2D(32, (3, 3), activation='relu', padding='same')(input_img)
 x = MaxPooling2D((2, 2), padding='same')(x)
@@ -44,19 +45,19 @@ x = Conv2D(32, (3, 3), activation='relu', padding='same')(encoded)
 x = UpSampling2D((2, 2))(x)
 x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
 x = UpSampling2D((2, 2))(x)
-decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
+decoded = Conv2D(1, (3, 3), activation='relu', padding='same')(x)
 
 autoencoder = Model(input_img, decoded)
-autoencoder.compile(optimizer='adadelta', loss='logcosh')
+autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
 
 from keras.callbacks import TensorBoard
-
+tensorboard = TensorBoard(log_dir="logs/{}".format(time()))
 autoencoder.fit(x_train, x_train,
-                epochs=2,
+                epochs=3,
                 batch_size=128,
                 shuffle=True,
-                validation_data=(x_test, x_test),
-               callbacks=[TensorBoard(log_dir='/tmp/tb', histogram_freq=0, write_graph=False)])
+                validation_data=(x_test_noisy, x_test_noisy),
+               callbacks=[tensorboard])
 
 
 
