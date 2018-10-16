@@ -108,8 +108,8 @@ def mod_indep_rep_vol(model, vol_data, im_size):
 
     intermediate_output2 = intermediate_layer_model.predict([
         vol_data[:, :im_size, :im_size, 0, None],
-        vol_data[:, :im_size, :, 1, None],
-        vol_data[:, :im_size, :, 2, None]
+        vol_data[:, :im_size, :im_size, 1, None],
+        vol_data[:, :im_size, :im_size, 2, None]
     ])
 
     intermediate_output3 = intermediate_layer_model.predict([
