@@ -124,7 +124,7 @@ def mod_indep_rep_vol(model, vol_data, im_size):
         vol_data[:, - im_size:, - im_size:, 2, None]
     ])
 
-    indf = np.zeros(vol_data.shape)
+    indf = np.zeros(vol_data.shape[:3])
     out_vol = np.zeros(vol_data.shape[:3])
     out_vol[:, :im_size, :im_size] = intermediate_output1
     out_vol[:, :im_size, - im_size:] = intermediate_output2
