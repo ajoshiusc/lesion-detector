@@ -107,33 +107,33 @@ def mod_indep_rep_vol(model, vol_data, im_size):
     ])
 
     intermediate_output2 = intermediate_layer_model.predict([
-        vol_data[:, :im_size, -1 - im_size:, 0, None],
-        vol_data[:, :im_size, -1 - im_size:, 1, None],
-        vol_data[:, :im_size, -1 - im_size:, 2, None]
+        vol_data[:, :im_size, - im_size:, 0, None],
+        vol_data[:, :im_size, - im_size:, 1, None],
+        vol_data[:, :im_size, - im_size:, 2, None]
     ])
 
     intermediate_output3 = intermediate_layer_model.predict([
-        vol_data[:, -1 - im_size:, :im_size, 0, None],
-        vol_data[:, -1 - im_size:, :im_size, 1, None],
-        vol_data[:, -1 - im_size:, :im_size, 2, None]
+        vol_data[:, - im_size:, :im_size, 0, None],
+        vol_data[:, - im_size:, :im_size, 1, None],
+        vol_data[:, - im_size:, :im_size, 2, None]
     ])
 
     intermediate_output4 = intermediate_layer_model.predict([
-        vol_data[:, -1 - im_size:, -1 - im_size:, 0, None],
-        vol_data[:, -1 - im_size:, -1 - im_size:, 1, None],
-        vol_data[:, -1 - im_size:, -1 - im_size:, 2, None]
+        vol_data[:, - im_size:, - im_size:, 0, None],
+        vol_data[:, - im_size:, - im_size:, 1, None],
+        vol_data[:, - im_size:, - im_size:, 2, None]
     ])
 
     indf = np.zeros(vol_data.shape)
     vol_data[:, :im_size, :im_size] = intermediate_output1
-    vol_data[:, :im_size, -1 - im_size:] = intermediate_output2
-    vol_data[:, -1 - im_size:, :im_size] = intermediate_output3
-    vol_data[:, -1 - im_size:, -1 - im_size:] = intermediate_output4
+    vol_data[:, :im_size, - im_size:] = intermediate_output2
+    vol_data[:, - im_size:, :im_size] = intermediate_output3
+    vol_data[:, - im_size:, - im_size:] = intermediate_output4
 
     indf[:, :im_size, :im_size] += 1
-    indf[:, :im_size, -1 - im_size:] += 1
-    indf[:, -1 - im_size:, :im_size] += 1
-    indf[:, -1 - im_size:, -1 - im_size:] += 1
+    indf[:, :im_size, - im_size:] += 1
+    indf[:, - im_size:, :im_size] += 1
+    indf[:, - im_size:, - im_size:] += 1
 
     vol_data = vol_data / indf
 
