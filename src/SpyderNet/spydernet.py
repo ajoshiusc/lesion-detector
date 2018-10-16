@@ -125,16 +125,17 @@ def mod_indep_rep_vol(model, vol_data, im_size):
     ])
 
     indf = np.zeros(vol_data.shape)
-    vol_data[:, :im_size, :im_size] = intermediate_output1
-    vol_data[:, :im_size, - im_size:] = intermediate_output2
-    vol_data[:, - im_size:, :im_size] = intermediate_output3
-    vol_data[:, - im_size:, - im_size:] = intermediate_output4
+    out_vol = np.zeros(vol_data.shape[:3])
+    out_vol[:, :im_size, :im_size] = intermediate_output1
+    out_vol[:, :im_size, - im_size:] = intermediate_output2
+    out_vol[:, - im_size:, :im_size] = intermediate_output3
+    out_vol[:, - im_size:, - im_size:] = intermediate_output4
 
     indf[:, :im_size, :im_size] += 1
     indf[:, :im_size, - im_size:] += 1
     indf[:, - im_size:, :im_size] += 1
     indf[:, - im_size:, - im_size:] += 1
 
-    vol_data = vol_data / indf
+    out_vol = out_vol / indf
 
-    return vol_data
+    return out_vol
