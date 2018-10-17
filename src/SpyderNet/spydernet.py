@@ -136,6 +136,6 @@ def mod_indep_rep_vol(model, vol_data, im_size):
     indf[:, -im_size:, :im_size] += 1
     indf[:, -im_size:, -im_size:] += 1
 
-    out_vol = out_vol / indf[...,None]
+    out_vol = out_vol / indf #[...,None]
 
     return out_vol
