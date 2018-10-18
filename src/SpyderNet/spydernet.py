@@ -42,7 +42,7 @@ def spyder_net(isize, n_channel):
 
     x = concatenate([E1, E2, E3], axis=-1)
     x = Conv2D(
-        1, (3, 3), activation='relu', padding='same', name='Trunk1')(x)
+        1, (3, 3), activation='sigmoid', padding='same', name='Trunk1')(x)
 
     I_1 = decoder(x, 'd1')
     I_2 = decoder(x, 'd2')
@@ -136,6 +136,6 @@ def mod_indep_rep_vol(model, vol_data, im_size):
     indf[:, -im_size:, :im_size] += 1
     indf[:, -im_size:, -im_size:] += 1
 
-    out_vol = out_vol / indf #[...,None]
+    out_vol = out_vol / indf  #[...,None]
 
     return out_vol
