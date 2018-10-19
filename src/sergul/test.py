@@ -63,7 +63,7 @@ cluster.fit(all_imgs)
 reduced_images = cluster.transform(all_imgs)
 reconstructed_images = cluster.inverse_transform(reduced_images)
 
-mse = np.sum(abs(all_imgs - reconstructed_images)**2, axis=1)
+mse = np.mean(abs(all_imgs - reconstructed_images)**2, axis=1)
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
