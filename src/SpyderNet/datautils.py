@@ -6,6 +6,14 @@ from sklearn.feature_extraction.image import extract_patches_2d
 
 
 def read_data(study_dir, nsub, psize, npatch_perslice):
+    """
+    study_dir      : is the study directory where each subjects have different
+                    type of MRI stored.
+    nsub           : is indicating the number of subject we have in
+                    the study file
+    psize          : is the patch size
+    npatch_perslice: is number of patches per scan slice
+    """
     dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
     patch_data = np.zeros((0, 0, 0, 0))
@@ -14,9 +22,11 @@ def read_data(study_dir, nsub, psize, npatch_perslice):
         t1file = os.path.join(subj, 'T1.nii.gz')
         t2file = os.path.join(subj, 'T2.nii.gz')
         fl = os.path.join(subj, 'FLAIR.nii.gz')
-
+        # check if three MRI contrast exist if not skip subject
         if not (os.path.isfile(t1file) and os.path.isfile(t2file)
                 and os.path.isfile(fl)):
+            print("one file missing (T1,T2 or FLAIR), go to the next subject")
+            subno += 1
             continue
 
         if subno < nsub:
