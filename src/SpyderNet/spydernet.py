@@ -41,7 +41,8 @@ def spyder_net(isize, n_channel):
     I3, E3 = encoder(isize, 'i3')
 
     x = concatenate([E1, E2, E3], axis=-1)
-    x = Conv2D(3, (3, 3), activation='softmax', padding='same', name='Trunk1')(x)
+    x = Conv2D(
+        1, (3, 3), activation='sigmoid', padding='same', name='Trunk1')(x)
 
     I_1 = decoder(x, 'd1')
     I_2 = decoder(x, 'd2')
@@ -92,25 +93,49 @@ def mod_indep_rep(model, data):
     return intermediate_output, pred
 
 
-def get_neural_net(self, isize=[32, 32], subc_size=31870):
-    """VGG model with one FC layer added at the end for continuous output"""
-    lh_input, lh_out = get_mynet(isize, 'lh_')
-    rh_input, rh_out = get_mynet(isize, 'rh_')
+def mod_indep_rep_vol(model, vol_data, im_size):
 
-    subco_input = Input(shape=(subc_size, 36), dtype='float32')
-    fc = Flatten()(subco_input)
-    subco_out = Dense(256, activation='relu')(fc)
+    layer_name = 'Trunk1'
 
-    cc = concatenate([lh_out, rh_out, subco_out], axis=-1)
-    cc = Dense(64, activation='relu')(cc)
-    out_theta = Dense(3)(cc)
+    intermediate_layer_model = Model(
+        inputs=model.input, outputs=model.get_layer(layer_name).output)
 
-    print("==Defining Model  ==")
-    model = Model(
-        inputs=[lh_input, rh_input, subco_input], outputs=[out_theta])
-    optz = adam(lr=1e-4)  #, decay=1e-6, momentum=0.9, nesterov=True)
+    intermediate_output1 = intermediate_layer_model.predict([
+        vol_data[:, :im_size, :im_size, 0, None],
+        vol_data[:, :im_size, :im_size, 1, None],
+        vol_data[:, :im_size, :im_size, 2, None]
+    ])
 
-    model.compile(
-        optimizer=optz, loss=losses.mean_squared_error, metrics=['mse'])
+    intermediate_output2 = intermediate_layer_model.predict([
+        vol_data[:, :im_size, -im_size:, 0, None],
+        vol_data[:, :im_size, -im_size:, 1, None],
+        vol_data[:, :im_size, -im_size:, 2, None]
+    ])
 
-    return model
+    intermediate_output3 = intermediate_layer_model.predict([
+        vol_data[:, -im_size:, :im_size, 0, None],
+        vol_data[:, -im_size:, :im_size, 1, None],
+        vol_data[:, -im_size:, :im_size, 2, None]
+    ])
+
+    intermediate_output4 = intermediate_layer_model.predict([
+        vol_data[:, -im_size:, -im_size:, 0, None],
+        vol_data[:, -im_size:, -im_size:, 1, None],
+        vol_data[:, -im_size:, -im_size:, 2, None]
+    ])
+
+    indf = np.zeros(vol_data.shape[:3])
+    out_vol = np.zeros(vol_data.shape[:3])
+    out_vol[:, :im_size, :im_size] += intermediate_output1.squeeze()
+    out_vol[:, :im_size, -im_size:] += intermediate_output2.squeeze()
+    out_vol[:, -im_size:, :im_size] += intermediate_output3.squeeze()
+    out_vol[:, -im_size:, -im_size:] += intermediate_output4.squeeze()
+
+    indf[:, :im_size, :im_size] += 1
+    indf[:, :im_size, -im_size:] += 1
+    indf[:, -im_size:, :im_size] += 1
+    indf[:, -im_size:, -im_size:] += 1
+
+    out_vol = out_vol / indf  #[...,None]
+
+    return out_vol

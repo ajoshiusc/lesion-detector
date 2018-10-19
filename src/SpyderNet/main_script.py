@@ -1,5 +1,5 @@
 import numpy as np
-from spydernet import train_model, mod_indep_rep
+from spydernet import train_model, mod_indep_rep, mod_indep_rep_vol
 from datautils import read_data
 import matplotlib.pyplot as plt
 
@@ -18,7 +18,9 @@ def main():
 
     # Generate model independent representation
     test_data = data[690:695, :, :, :]
-    I, pred = mod_indep_rep(model, test_data)
+    #I, pred = mod_indep_rep(model, test_data)
+
+    v = mod_indep_rep_vol(model, test_data, im_size=128)
 
     # Plot the results
     plt.figure()
