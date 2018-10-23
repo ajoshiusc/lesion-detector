@@ -15,7 +15,12 @@ def encoder(isize, namestr):
         name=namestr + 'enc1')(input_img)
     #    x = MaxPooling2D((2, 2), padding='same')(x)
     x = Conv2D(
-        4, (3, 3), activation='relu', padding='same', name=namestr + 'enc2')(x)
+        6, (3, 3), activation='relu', padding='same', name=namestr + 'enc2')(x)
+    x = Conv2D(
+        6, (3, 3), activation='relu', padding='same', name=namestr + 'enc3')(x)
+    x = Conv2D(
+        4, (3, 3), activation='relu', padding='same', name=namestr + 'enc4')(x)
+
     #   x = MaxPooling2D((2, 2), padding='same')(x)
 
     return input_img, x
@@ -27,10 +32,14 @@ def decoder(input_enc, namestr):
         name=namestr + 'dec1')(input_enc)
     #    x = UpSampling2D((2, 2))(x)
     x = Conv2D(
-        4, (3, 3), activation='relu', padding='same', name=namestr + 'dec2')(x)
+        6, (3, 3), activation='relu', padding='same', name=namestr + 'dec2')(x)
+    x = Conv2D(
+        6, (3, 3), activation='relu', padding='same', name=namestr + 'dec3')(x)
+    x = Conv2D(
+        4, (3, 3), activation='relu', padding='same', name=namestr + 'dec4')(x)
     #    x = UpSampling2D((2, 2))(x)
     decoded = Conv2D(
-        1, (3, 3), activation='relu', padding='same', name=namestr + 'dec3')(x)
+        1, (3, 3), activation='relu', padding='same', name=namestr + 'dec5')(x)
     return decoded
 
 
