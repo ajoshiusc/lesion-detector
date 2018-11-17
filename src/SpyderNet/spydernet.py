@@ -5,6 +5,18 @@ from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 import numpy as np
 from keras.callbacks import TensorBoard
 from time import time
+import tensorflow as tf
+from keras import backend as K
+
+def custom_loss(y_true, y_pred):
+    alpha = 0.1
+    loss1 = K.sum(C.binary_cross_entropy(y_pred,y_true))/200
+    loss2 = C.binary_cross_entropy(y_pred[200,:],y_true[200,:])
+    loss = alpha*loss1 + (1-alpha)*loss2
+
+    loss = tf.reduce_sum(tf.image.total_variation(images))
+
+    return loss
 
 
 def encoder(isize, namestr):
@@ -77,7 +89,7 @@ def train_model(data):
         data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
     ],
                           batch_size=256,
-                          epochs=50,
+                          epochs=10,
                           verbose=1,
                           shuffle=True,
                           validation_split=0.2,
@@ -134,6 +146,43 @@ def mod_indep_rep_vol(model, vol_data, im_size):
     ])
 
     indf = np.zeros(vol_data.shape[:3])
+    out_vol = np.zeros(vol_data.shape[:3])
+    out_vol[:, :im_size, :im_size] += intermediate_output1.squeeze()
+    out_vol[:, :im_size, -im_size:] += intermediate_output2.squeeze()
+    out_vol[:, -im_size:, :im_size] += intermediate_output3.squeeze()
+    out_vol[:, -im_size:, -im_size:] += intermediate_output4.squeeze()
+
+    indf[:, :im_size, :im_size] += 1
+    indf[:, :im_size, -im_size:] += 1
+    indf[:, -im_size:, :im_size] += 1
+    indf[:, -im_size:, -im_size:] += 1
+
+    out_vol = out_vol / indf  #[...,None]
+
+    return out_vol
+
+
+
+def mod_indep_rep_vol_stp(model, vol_data, im_size):
+
+    layer_name = 'Trunk1'
+
+    intermediate_layer_model = Model(
+        inputs=model.input, outputs=model.get_layer(layer_name).output)
+
+    vol_size = vol_data.shape
+    out_vol = np.zeros(vol_data.shape[:3])
+    indf = np.zeros(vol_data.shape[:3])
+
+
+    for j in range(vol_size[1]-im_size):
+        out_vol[:, :im_size+j, :im_size] = intermediate_layer_model.predict([
+            vol_data[:, :im_size+j, :im_size, 0, None],
+            vol_data[:, :im_size+j, :im_size, 1, None],
+            vol_data[:, :im_size+j, :im_size, 2, None]
+        ])
+
+
     out_vol = np.zeros(vol_data.shape[:3])
     out_vol[:, :im_size, :im_size] += intermediate_output1.squeeze()
     out_vol[:, :im_size, -im_size:] += intermediate_output2.squeeze()
