@@ -21,14 +21,20 @@ import numpy as np
 from matplotlib import pyplot as plt
 from spydernet import train_model, mod_indep_rep_vol, mod_indep_rep_vol
 from spydernet import train_model, mod_indep_rep
-from tensorflow.python.client import device_lib
+#from tensorflow.python.client import device_lib
 
 """ Main script that calls the functions objects"""
 """ Main script that calls the functions objects"""
 data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
+tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/tracktbi_done.txt'
+with open(tbi_done_list) as f:
+    tbidoneIds = f.readlines()
 
-data = read_data(
-    study_dir=data_dir, nsub=2, psize=[128, 128], npatch_perslice=16)
+# Get the list of subjects that are correctly registered
+tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
+
+
+data = read_data(study_dir=data_dir, subids = tbidoneIds, nsub=2, psize=[128, 128], npatch_perslice=16)
 
 np.savez('tp_data.npz', data=data)
 

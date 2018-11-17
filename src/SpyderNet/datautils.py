@@ -5,15 +5,15 @@ import numpy as np
 from sklearn.feature_extraction.image import extract_patches_2d
 
 
-def read_data(study_dir, nsub, psize, npatch_perslice):
-    dirlist = glob.glob(study_dir + '/TBI*')
+def read_data(study_dir, subids, nsub, psize, npatch_perslice):
+#    dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
     patch_data = np.zeros((0, 0, 0, 0))
-    for subj in dirlist:
+    for subj in subids:
 
-        t1file = os.path.join(subj, 'T1.nii.gz')
-        t2file = os.path.join(subj, 'T2.nii.gz')
-        fl = os.path.join(subj, 'FLAIR.nii.gz')
+        t1file = os.path.join(study_dir, subj, 'T1.nii.gz')
+        t2file = os.path.join(study_dir, subj, 'T2.nii.gz')
+        fl = os.path.join(study_dir, subj, 'FLAIR.nii.gz')
 
         if not (os.path.isfile(t1file) and os.path.isfile(t2file)
                 and os.path.isfile(fl)):
