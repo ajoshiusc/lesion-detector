@@ -22,7 +22,6 @@ from matplotlib import pyplot as plt
 from spydernet import train_model, mod_indep_rep_vol, mod_indep_rep_vol
 from spydernet import train_model, mod_indep_rep
 #from tensorflow.python.client import device_lib
-
 """ Main script that calls the functions objects"""
 """ Main script that calls the functions objects"""
 data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
@@ -33,8 +32,12 @@ with open(tbi_done_list) as f:
 # Get the list of subjects that are correctly registered
 tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 
-
-data = read_data(study_dir=data_dir, subids = tbidoneIds, nsub=2, psize=[128, 128], npatch_perslice=16)
+data = read_data(
+    study_dir=data_dir,
+    subids=tbidoneIds,
+    nsub=10,
+    psize=[128, 128],
+    npatch_perslice=16)
 
 np.savez('tp_data.npz', data=data)
 
@@ -70,9 +73,7 @@ print(I)
 #plt.show()
 
 # In[2]:
-
 """ Main script that calls the functions objects"""
-
 
 model = load_model('tp_model_softmax.h5')
 
@@ -110,7 +111,6 @@ for j in range(5):
     plt.imshow(test_data[j, :, :, 2].squeeze(), cmap='gray')
 
 plt.show()
-
 
 t1 = ni.load_img(
     '/big_diak/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T1.nii.gz'
