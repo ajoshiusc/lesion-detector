@@ -113,16 +113,16 @@ for j in range(5):
 plt.show()
 
 t1 = ni.load_img(
-    '/big_diak/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T1.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T1.nii.gz'
 ).get_data()
 t2 = ni.load_img(
-    '/big_diak/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T2.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T2.nii.gz'
 ).get_data()
 flair = ni.load_img(
-    '/big_diak/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/FLAIR.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/FLAIR.nii.gz'
 ).get_data()
 t1o = ni.load_img(
-    '/big_diak/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T1.nii.gz')
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T1.nii.gz')
 
 p = np.percentile(np.ravel(t1), 95)  #normalize to 95 percentile
 t1 = np.float32(t1) / p
