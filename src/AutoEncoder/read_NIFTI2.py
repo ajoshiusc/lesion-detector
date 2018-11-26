@@ -6,16 +6,16 @@ from skimage.util.shape import view_as_blocks
 first_path='/data_disk/HCP_All'
 second_path='T1w'
 data_name='T1w_acpc_dc_restore_brain.nii.gz'
-subnum=10
+subnum=1
 window_size=35
-patch_num=2000
+patch_num=10
 ## patch data
 img_newshape=patch_maker(first_path,second_path,data_name,subnum,window_size,patch_num)
 ## define test and train
 x_train = img_newshape[0:patch_num+1,:,:,:]
 x_test = img_newshape[patch_num+1:,:,:,:]
 x_test_noisy=x_test
-x_test_noisy[0,4,15:20,0] = 1
+#x_test_noisy[0,4,15:20,0] = 1
 ## fit the data
 model=auto_encoder(window_size)
 model.fit(x_train, x_train,
