@@ -68,9 +68,7 @@ t2 = np.float32(t2) / p
 
 p = np.percentile(np.ravel(flair), 95)  #normalize to 95 percentile
 flair = np.float32(flair) / p
-
 dat = np.stack((t1, t2, flair), axis=3)
-
 
 print(dat.shape)
 dat = np.float32(dat)
