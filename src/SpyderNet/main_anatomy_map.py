@@ -49,7 +49,7 @@ model1.save('tp_model_softmax.h5')
 
 test_data = data[90:95, :, :, :]
 
-model = load_model('tp_model_softmax.h5')
+model = load_model('/big_disk/ajoshi/coding_ground/lesion-detector/src/SpyderNet/tp_model_softmax.h5')
 
 I, pred = mod_indep_rep(model, test_data)
 
@@ -75,7 +75,7 @@ print(I)
 # In[2]:
 """ Main script that calls the functions objects"""
 
-model = load_model('tp_model_softmax.h5')
+model = load_model('/big_disk/ajoshi/coding_ground/lesion-detector/src/SpyderNet/tp_model_softmax.h5')
 
 d = np.load('tp_data.npz')
 

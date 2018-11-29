@@ -185,7 +185,11 @@ def mod_indep_rep_vol_stp(model, vol_data, im_size, step_size=1):
     return out_vol
 
 def slice2vol_pred(model_pred, vol_data, im_size, step_size=1):
-
+# model_pred: predictor that gives 2d images as outputs
+# vol_data this is 3d images + 4th dim for different modalities
+# im_size number with size of images (for 64x64 images) it is 64
+# step_size : size of offset in stacked reconstruction
+    
     out_vol = np.zeros(vol_data.shape[:3]) # output volume
     indf = np.zeros(vol_data.shape[:3]) # dividing factor
     vol_size = vol_data.shape
