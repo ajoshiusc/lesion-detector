@@ -7,6 +7,7 @@ import numpy as np
 from ReNA.rena import ReNA
 import matplotlib.pyplot as plt
 import glob
+import pandas as pd
 
 # Before run edit the dir_name to the path of your subject; include / at the end
 dir_name = "/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/"
@@ -140,21 +141,41 @@ ax.set_xticklabels(labels_plot, rotation=90)
 ax.set_ylabel("MSE")
 plt.tight_layout()
 
-
+df1 = pd.Series(labels_plot)
+df2 = pd.Series(mse)
+df = pd.DataFrame(df1,columns=['Subject'])
+df['MSE'] = df2
+df = df.sort_values(by='MSE',ascending=False)
+dfplot = df.plot(x='Subject', y='MSE',marker='o',color='g')
+dfplot.set_xticks(range(n_samples))
+dfplot.set_xticklabels(df['Subject'],rotation=90)
+dfplot.set_ylabel("MSE - arranged")
 
 labels_plot2 = []
 for labels_p in subject_list:
-    labels_plot2.append(labels_p)
+    labels_plot2.append(labels_p.split('/')[f_len+1])
 
 #labels_plot2 = np.array(labels_plot2)
 mse1 = np.array([(sum(mse[i:i+3]))/3 for i in range(0,len(mse),3)])
 nn_samples = int(n_samples/3)
 
-fig = plt.figure()
-ax1 = fig.add_subplot(111)
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(111)
 ax1.plot(mse1, marker='o')
 ax1.set_xticks(range(nn_samples))
 ax1.set_xticklabels(labels_plot2, rotation=90)
 ax1.set_ylabel("Average MSE for three images per subject")
 plt.tight_layout()
+
+
+df1 = pd.Series(labels_plot2)
+df2 = pd.Series(mse1)
+df = pd.DataFrame(df1,columns=['Subject'])
+df['MSE'] = df2
+df = df.sort_values(by='MSE',ascending=False)
+dfplot2 = df.plot(x='Subject', y='MSE',marker='o',color='g')
+dfplot2.set_xticks(range(nn_samples))
+dfplot2.set_xticklabels(df['Subject'],rotation=90)
+dfplot2.set_ylabel("Average MSE for three images per subject - arranged")
+
 plt.show()
