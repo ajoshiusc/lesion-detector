@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import pyplot as plt
-from spydernet import train_model, mod_indep_rep_vol, mod_indep_rep_vol
+from spydernet import train_model, mod_indep_rep_vol, mod_indep_rep_vol_stp
 from spydernet import train_model, mod_indep_rep
 #from tensorflow.python.client import device_lib
 """ Main script that calls the functions objects"""
@@ -111,7 +111,7 @@ for j in range(5):
     plt.imshow(test_data[j, :, :, 2].squeeze(), cmap='gray')
 
 plt.show()
-
+#%%%
 t1 = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T1.nii.gz'
 ).get_data()
@@ -140,7 +140,7 @@ dat = np.stack((t1, t2, flair), axis=3)
 print(dat.shape)
 dat = np.float32(dat)
 td = dat.copy()
-I2 = mod_indep_rep_vol(model, td, 128)
+I2 = mod_indep_rep_vol_stp(model, td, 128)
 
 fig = plt.figure(figsize=(20, 20))
 for j in range(5):
@@ -160,8 +160,8 @@ plt.show()
 
 print(I2.shape)
 
-img = ni.new_img_like(t1o, I2[:, :, :, 0])
-img.to_filename('/big_diak/ajoshi/fitbir/preproc/tracktbi_pilot/out.nii.gz')
+img = ni.new_img_like(t1o, I2)
+img.to_filename('/big_disk/ajoshi/out.nii.gz')
 
 # In[8]:
 
