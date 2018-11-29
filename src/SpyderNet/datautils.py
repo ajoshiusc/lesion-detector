@@ -3,7 +3,7 @@ import nilearn as nl
 import os
 import numpy as np
 from sklearn.feature_extraction.image import extract_patches_2d
-
+from tqdm import tqdm
 
 def read_data(study_dir, subids, nsub, psize, npatch_perslice):
 #    dirlist = glob.glob(study_dir + '/TBI*')

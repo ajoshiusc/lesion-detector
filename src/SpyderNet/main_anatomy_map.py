@@ -32,20 +32,20 @@ with open(tbi_done_list) as f:
 # Get the list of subjects that are correctly registered
 tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 
-data = read_data(
-    study_dir=data_dir,
-    subids=tbidoneIds,
-    nsub=10,
-    psize=[64, 64],
-    npatch_perslice=16)
+#data = read_data(
+#    study_dir=data_dir,
+#    subids=tbidoneIds,
+#    nsub=10,
+#    psize=[64, 64],
+#    npatch_perslice=16)
 
-np.savez('tp_data.npz', data=data)
+#np.savez('tp_data.npz', data=data)
 
-train_data = data  #[0:-5, :, :, :]
+#train_data = data  #[0:-5, :, :, :]
 
-model1 = train_model(train_data)
+#model1 = train_model(train_data)
 
-model1.save('tp_model_softmax.h5')
+#model1.save('tp_model_softmax.h5')
 
 model = load_model('/big_disk/ajoshi/coding_ground/lesion-detector/src/SpyderNet/tp_model_softmax.h5')
 t1 = ni.load_img(
@@ -98,4 +98,3 @@ img.to_filename('/big_disk/ajoshi/out.nii.gz')
 
 # In[8]:
 
-I[1].shape
