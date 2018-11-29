@@ -36,7 +36,7 @@ data = read_data(
     study_dir=data_dir,
     subids=tbidoneIds,
     nsub=10,
-    psize=[128, 128],
+    psize=[64, 64],
     npatch_perslice=16)
 
 np.savez('tp_data.npz', data=data)
@@ -47,71 +47,7 @@ model1 = train_model(train_data)
 
 model1.save('tp_model_softmax.h5')
 
-test_data = data[90:95, :, :, :]
-
 model = load_model('/big_disk/ajoshi/coding_ground/lesion-detector/src/SpyderNet/tp_model_softmax.h5')
-
-I, pred = mod_indep_rep(model, test_data)
-
-plt.figure()
-for j in range(5):
-    plt.subplot(3, 5, j + 1)
-    plt.imshow(I[j, :, :, :].squeeze(), cmap='gray')
-    plt.subplot(3, 5, 5 + j + 1)
-    plt.imshow(test_data[j, :, :, 0].squeeze(), cmap='gray')
-    plt.subplot(3, 5, 10 + j + 1)
-    plt.imshow(pred[0][j, :, :, 0].squeeze(), cmap='gray')
-
-plt.show()
-
-print(test_data)
-print(I)
-
-#for j in range(5):
-#plt.matshow(I[j,:,:,:].squeeze())
-
-#plt.show()
-
-# In[2]:
-""" Main script that calls the functions objects"""
-
-model = load_model('/big_disk/ajoshi/coding_ground/lesion-detector/src/SpyderNet/tp_model_softmax.h5')
-
-d = np.load('tp_data.npz')
-
-data = d['data']
-test_data = data[190:195, :, :, :]
-
-# In[4]:
-
-plt.rcParams["axes.grid"] = False
-test_data = data[5000:5005, :, :, :]
-
-fig = plt.figure(figsize=(18, 16), dpi=100, facecolor='none', edgecolor='none')
-
-td = test_data.copy()
-
-I = mod_indep_rep_vol(model, td, 128)
-
-I.shape
-#fig=plt.figure(figsize=(20, 20))
-pred = test_data
-
-for j in range(5):
-    plt.subplot(5, 5, j + 1)
-    plt.imshow(I[j, :, :], cmap='gray')
-
-    plt.subplot(5, 5, 5 + j + 1)
-    plt.imshow(test_data[j, :, :, 0].squeeze(), cmap='gray')
-
-    plt.subplot(5, 5, 10 + j + 1)
-    plt.imshow(test_data[j, :, :, 1].squeeze(), cmap='gray')
-
-    plt.subplot(5, 5, 15 + j + 1)
-    plt.imshow(test_data[j, :, :, 2].squeeze(), cmap='gray')
-
-plt.show()
-#%%%
 t1 = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVBB041DZW/T1.nii.gz'
 ).get_data()
@@ -135,7 +71,6 @@ flair = np.float32(flair) / p
 
 dat = np.stack((t1, t2, flair), axis=3)
 
-#dat=np.stack((t1.get_data(),t2.get_data(),flair.get_data()),axis=-1)
 
 print(dat.shape)
 dat = np.float32(dat)
