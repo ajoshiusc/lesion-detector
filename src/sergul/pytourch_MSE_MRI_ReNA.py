@@ -8,6 +8,7 @@ from ReNA.rena import ReNA
 import matplotlib.pyplot as plt
 import glob
 import pandas as pd
+import torch as tor
 
 # Before run edit the dir_name to the path of your subject; include / at the end
 dir_name = "/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/"
@@ -61,14 +62,18 @@ def get_single_subject(file_name):
 
     p = np.percentile(np.ravel(t1), 95)  # normalize to 95 percentile
     t1 = np.float32(t1) / p
+    t1 = tor.from_numpy(t1)
 
     p = np.percentile(np.ravel(t2), 95)  # normalize to 95 percentile
     t2 = np.float32(t2) / p
+    t2 = tor.from_numpy(t2)
 
     p = np.percentile(np.ravel(flair), 95)  # normalize to 95 percentile
     flair = np.float32(flair) / p
+    flair = tor.from_numpy(flair)
 
-    imgs = np.concatenate((t1, t2, flair))
+    #imgs = np.concatenate((t1, t2, flair))
+    imgs = tor.cat(t1,t2,flair)
 
     return imgs
 
@@ -91,12 +96,17 @@ for subject_name in subject_list:
     if all_imgs is None:
         all_imgs = imgs
     else:
-        all_imgs = np.concatenate((all_imgs, imgs))
+        #all_imgs = np.concatenate((all_imgs, imgs))
+        all_imgs = tor.cat((all_imgs,imgs))
 
 print('all images concatenate shape is ', all_imgs.shape, '\n')
 
-n_voxels = all_imgs.shape[1]
-n_samples = all_imgs.shape[0]
+# n_voxels = all_imgs.shape[1]
+# n_samples = all_imgs.shape[0]
+# n_clusters = int(20 * n_voxels / 100)
+
+n_voxels = all_imgs.size()[1]
+n_samples = all_imgs.size()[0]
 n_clusters = int(20 * n_voxels / 100)
 
 # Apply ReNA - unsupervised algorithm
