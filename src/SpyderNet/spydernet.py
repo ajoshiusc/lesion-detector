@@ -5,6 +5,21 @@ from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 import numpy as np
 from keras.callbacks import TensorBoard
 from time import time
+import tensorflow as tf
+from keras import backend as K
+from tqdm import tqdm
+from datautils import slice2vol_pred
+
+
+def custom_loss(y_true, y_pred):
+    alpha = 0.1
+    loss1 = K.sum(C.binary_cross_entropy(y_pred, y_true)) / 200
+    loss2 = C.binary_cross_entropy(y_pred[200, :], y_true[200, :])
+    loss = alpha * loss1 + (1 - alpha) * loss2
+
+    loss = tf.reduce_sum(tf.image.total_variation(images))
+
+    return loss
 
 
 def encoder(isize, namestr):
@@ -15,11 +30,14 @@ def encoder(isize, namestr):
         name=namestr + 'enc1')(input_img)
     #    x = MaxPooling2D((2, 2), padding='same')(x)
     x = Conv2D(
-        16, (3, 3), activation='relu', padding='same', name=namestr + 'enc2')(x)
+        16, (3, 3), activation='relu', padding='same',
+        name=namestr + 'enc2')(x)
     x = Conv2D(
-        16, (3, 3), activation='relu', padding='same', name=namestr + 'enc3')(x)
+        16, (3, 3), activation='relu', padding='same',
+        name=namestr + 'enc3')(x)
     x = Conv2D(
-        16, (3, 3), activation='relu', padding='same', name=namestr + 'enc4')(x)
+        16, (3, 3), activation='relu', padding='same',
+        name=namestr + 'enc4')(x)
 
     #   x = MaxPooling2D((2, 2), padding='same')(x)
 
@@ -32,11 +50,14 @@ def decoder(input_enc, namestr):
         name=namestr + 'dec1')(input_enc)
     #    x = UpSampling2D((2, 2))(x)
     x = Conv2D(
-        16, (3, 3), activation='relu', padding='same', name=namestr + 'dec2')(x)
+        16, (3, 3), activation='relu', padding='same',
+        name=namestr + 'dec2')(x)
     x = Conv2D(
-        16, (3, 3), activation='relu', padding='same', name=namestr + 'dec3')(x)
+        16, (3, 3), activation='relu', padding='same',
+        name=namestr + 'dec3')(x)
     x = Conv2D(
-        16, (3, 3), activation='relu', padding='same', name=namestr + 'dec4')(x)
+        16, (3, 3), activation='relu', padding='same',
+        name=namestr + 'dec4')(x)
     #    x = UpSampling2D((2, 2))(x)
     decoded = Conv2D(
         1, (3, 3), activation='relu', padding='same', name=namestr + 'dec5')(x)
@@ -77,7 +98,7 @@ def train_model(data):
         data[:, :, :, 0, None], data[:, :, :, 1, None], data[:, :, :, 2, None]
     ],
                           batch_size=256,
-                          epochs=50,
+                          epochs=10,
                           verbose=1,
                           shuffle=True,
                           validation_split=0.2,
@@ -148,3 +169,20 @@ def mod_indep_rep_vol(model, vol_data, im_size):
     out_vol = out_vol / indf  #[...,None]
 
     return out_vol
+
+
+def mod_indep_rep_vol_stp(model, vol_data, im_size, step_size=1):
+    # This function reconstructs the 3D volume from slices
+
+    layer_name = 'Trunk1'
+
+    intermediate_layer_model = Model(
+        inputs=model.input, outputs=model.get_layer(layer_name).output)
+
+    model_pred = intermediate_layer_model.predict
+
+    out_vol = slice2vol_pred(model_pred, vol_data, im_size, step_size=1)
+    
+    return out_vol
+
+

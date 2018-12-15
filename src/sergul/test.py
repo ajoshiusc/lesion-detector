@@ -7,7 +7,7 @@ import numpy as np
 from ReNA.rena import ReNA
 import matplotlib.pyplot as plt
 
-mask_img = nb.load('../../../stochastic_regularizer/sergul_aydore/supporting_data/grey10_icbm_2mm_bin.nii.gz')
+mask_img = nb.load('/big_disk/ajoshi/coding_ground/lesion-detector/supporting_data/grey10_icbm_2mm_bin.nii.gz')
 nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=False,
                            standardize=False)
 nifti_masker.fit()
@@ -40,7 +40,7 @@ def get_single_subject(file_name):
 subject_list = ['TBI_INVDD132CG0', 'TBI_INVEL154CKX', 'TBI_INVEU482TRG']
 # TODO: make automated
 all_imgs = None
-dir_name = "../../sample_data/"
+dir_name = "/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/"
 for subject_name in subject_list:
     file_name = dir_name + subject_name
     imgs = get_single_subject(file_name)
