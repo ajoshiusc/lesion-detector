@@ -36,9 +36,9 @@ def subject_checker(study_folder):
 
     for subject in subject_list:
 
-        t1file = os.path.join(subject, 'T1.nii.gz')
-        t2file = os.path.join(subject, 'T2.nii.gz')
-        fl = os.path.join(subject, 'FLAIR.nii.gz')
+        t1file = os.path.join(subject, 'T1mni.nii.gz')
+        t2file = os.path.join(subject, 'T2mni.nii.gz')
+        fl = os.path.join(subject, 'FLAIRmni.nii.gz')
 
         if not (os.path.isfile(t1file) and os.path.isfile(t2file)
                 and os.path.isfile(fl)):
@@ -51,9 +51,9 @@ def subject_checker(study_folder):
 
 
 def get_single_subject(file_name):
-    t1file = os.path.join(file_name, 'T1.nii.gz')
-    t2file = os.path.join(file_name, 'T2.nii.gz')
-    fl = os.path.join(file_name, 'FLAIR.nii.gz')
+    t1file = os.path.join(file_name, 'T1mni.nii.gz')
+    t2file = os.path.join(file_name, 'T2mni.nii.gz')
+    fl = os.path.join(file_name, 'FLAIRmni.nii.gz')
 
     t1 = nifti_masker.transform(image.load_img(t1file))
     t2 = nifti_masker.transform(image.load_img(t2file))
@@ -76,9 +76,11 @@ def get_single_subject(file_name):
 all_imgs = None
 
 # print(subject_list) # just to chekc we have the right subject
-tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/tracktbi_done.txt'
+tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot_done.txt'
 with open(tbi_done_list) as f:
     tbidoneIds = f.readlines()
+
+tbidoneIds=tbidoneIds[:100]
 
 # Get the list of subjects that are correctly registered
 subject_list = [l.strip('\n\r') for l in tbidoneIds]
@@ -124,13 +126,13 @@ for labels_p in subject_list:
     # ../../sample_data/TBI*/*  >>> 0/1/2/3/4
     # use f_len here
     for c in c_list:
-        if c.split('/')[f_len + 2] == 'T1.nii.gz':
+        if c.split('/')[f_len + 2] == 'T1mni.nii.gz':
             labels_plot.append(c.split('/')[f_len + 1] + '-' + c.split('/')[f_len + 2][0:2])
     for c in c_list:
-        if c.split('/')[f_len + 2] == 'T2.nii.gz':
+        if c.split('/')[f_len + 2] == 'T2mni.nii.gz':
             labels_plot.append(c.split('/')[f_len + 1] + '-' + c.split('/')[f_len + 2][0:2])
     for c in c_list:
-        if c.split('/')[f_len + 2] == 'FLAIR.nii.gz':
+        if c.split('/')[f_len + 2] == 'FLAIRmni.nii.gz':
             labels_plot.append(c.split('/')[f_len + 1] + '-' + c.split('/')[f_len + 2][0:2])
 
 fig = plt.figure()
@@ -151,9 +153,11 @@ dfplot.set_xticks(range(n_samples))
 dfplot.set_xticklabels(df['Subject'],rotation=90)
 dfplot.set_ylabel("MSE - arranged")
 
-labels_plot2 = []
+""" labels_plot2 = []
 for labels_p in subject_list:
     labels_plot2.append(labels_p.split('/')[f_len+1])
+ """
+labels_plot2 = subject_list
 
 #labels_plot2 = np.array(labels_plot2)
 mse1 = np.array([(sum(mse[i:i+3]))/3 for i in range(0,len(mse),3)])
@@ -179,3 +183,5 @@ dfplot2.set_xticklabels(df['Subject'],rotation=90)
 dfplot2.set_ylabel("Average MSE for three images per subject - arranged")
 
 plt.show()
+
+print('Done')
