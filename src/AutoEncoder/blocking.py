@@ -2,7 +2,7 @@ import numpy as np
 from skimage.util.shape import view_as_windows
 A = np.arange(4*4*4).reshape(4,4,4)
 B=np.arange(10).reshape(10,1)
-print(B)
+print(A)
 C=B[0:9]
 print(B[9])
 
