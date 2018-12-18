@@ -210,9 +210,7 @@ smoothed_img = image.smooth_img(mean_func, 15)
 plotting.plot_epi(smoothed_img, title="epi 15mm smoothing Relative change TBI_INVEU482TRG",
                   cut_coords=(20, 0,0),black_bg='True',colorbar=True)
 
-plt.show()
 
-plt.show()
 =======
 plt.show()
 
