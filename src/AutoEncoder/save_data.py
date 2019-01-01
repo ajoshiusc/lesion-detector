@@ -16,8 +16,8 @@ window_size=64
 data = read_data(
     study_dir=data_dir,
     subids=tbidoneIds,
-    nsub=11,
+    nsub=30,
     psize=[window_size, window_size],
-    npatch_perslice=64)
-np.random.shuffle(data)
-np.savez('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_11.npz', data=data)
+    npatch_perslice=32)
+#np.random.shuffle(data)
+np.savez('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_30__32_nf.npz', data=data)

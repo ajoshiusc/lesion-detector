@@ -182,6 +182,37 @@ dfplot2.set_xticks(range(nn_samples))
 dfplot2.set_xticklabels(df['Subject'],rotation=90)
 dfplot2.set_ylabel("Average MSE for three images per subject - arranged")
 
+<<<<<<< HEAD
+from nilearn import plotting, image
+# write the labels of the higher MSE 'TBI_INVCC877TW1'
+indx_pt = labels_plot2.index('TBI_INVEU482TRG')
+
+
+plotting.plot_epi(nifti_masker.inverse_transform(all_imgs[indx_pt]), title="epi TBI_INVEU482TRG",
+                  cut_coords=(20, 0,0),black_bg='True',colorbar=True)
+
+plotting.plot_epi(nifti_masker.inverse_transform(reconstructed_images[indx_pt]), title="epi ReNA reconstructed TBI_INVEU482TRG",
+                  cut_coords=(20, 0,0),black_bg='True',colorbar=True)
+
+plotting.plot_anat(nifti_masker.inverse_transform(reconstructed_images[indx_pt]), title="epi ReNA reconstructed TBI_INVEU482TRG ",
+                  cut_coords=(20, 0,0),black_bg='True',colorbar=True)
+
+plotting.plot_epi(nifti_masker.inverse_transform(a_relative_chg[indx_pt]), title="epi Relative change TBI_INVEU482TRG ",
+                  cut_coords=(20, 0,0),black_bg='True',colorbar=True)
+
+#Smooth the relative changes
+mean_func = image.mean_img(nifti_masker.inverse_transform((a_relative_chg[indx_pt])))
+
+# Then we smooth, with a varying amount of smoothing, from none to 20mm
+# by increments of 5mm
+
+smoothed_img = image.smooth_img(mean_func, 15)
+plotting.plot_epi(smoothed_img, title="epi 15mm smoothing Relative change TBI_INVEU482TRG",
+                  cut_coords=(20, 0,0),black_bg='True',colorbar=True)
+
+
+=======
 plt.show()
 
 print('Done')
+>>>>>>> 3b24636ba32fc422c3b17e54338bf5a131765ece

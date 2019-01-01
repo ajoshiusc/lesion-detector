@@ -12,7 +12,7 @@ def read_data(study_dir, subids, nsub, psize, npatch_perslice):
     for subj in subids:
 
         t1file = os.path.join(study_dir, subj, 'T1mni.nii.gz')
-        t2file = os.path.join(study_dir, subj, 'T1mni.nii.gz')
+        t2file = os.path.join(study_dir, subj, 'T2mni.nii.gz')
         fl = os.path.join(study_dir, subj, 'FLAIRmni.nii.gz')
 
         if not (os.path.isfile(t1file) and os.path.isfile(t2file)
