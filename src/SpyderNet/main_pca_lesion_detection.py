@@ -37,7 +37,7 @@ model1.fit(
     batch_size=32,
     epochs=100)
 
-model1.save('model1.h5')    
+model1.save('model1.h5')
 
 data2 = model1.predict(data)
 
@@ -47,7 +47,7 @@ t1 = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVFK149AKJ/T1mni.nii.gz'
 ).get_data()
 t2 = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1maryland_rao_v1/TBI_INVFK149AKJ/T2mni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVFK149AKJ/T2mni.nii.gz'
 ).get_data()
 flair = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVFK149AKJ/FLAIRmni.nii.gz'
@@ -62,7 +62,7 @@ print(dat.shape)
 dat = np.float32(dat)
 
 #build_pca_autoencoder(model1, td, [64, 64, 3], step_size=1)
-out_vol = slice2vol_pred(model1.predict, dat, 64, step_size=1)
+out_vol = slice2vol_pred(model1.predict, dat, 64, step_size=10)
 #%%
 t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0])
 t1.to_filename('rec_t1.nii.gz')
