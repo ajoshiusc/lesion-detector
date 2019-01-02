@@ -26,7 +26,7 @@ data = read_data(
     psize=[64, 64],
     npatch_perslice=16)
 
-model1 = pca_ae([64, 64, 3], 7*7*32)
+model1 = pca_ae([64, 64, 3], 2*2*512)
 model1.compile(optimizer='adamax', loss='mse')
 
 model1.fit(
