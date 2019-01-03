@@ -10,8 +10,8 @@ import numpy as np
 from keras.losses import mse
 import nilearn.image as ni
 
-data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1'
-tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt'
+data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
+tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot_done.txt'
 
 with open(tbi_done_list) as f:
     tbidoneIds = f.readlines()
@@ -44,16 +44,16 @@ data2 = model1.predict(data)
 print(np.mean((data2.flatten() - data.flatten())**2))
 
 t1 = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVFK149AKJ/T1mni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.nii.gz'
 ).get_data()
 t2 = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVFK149AKJ/T2mni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T2mni.nii.gz'
 ).get_data()
 flair = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVFK149AKJ/FLAIRmni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/FLAIRmni.nii.gz'
 ).get_data()
 t1o = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVFK149AKJ/T1mni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.nii.gz'
 )
 
 dat = np.stack((t1, t2, flair), axis=3)
@@ -65,16 +65,16 @@ dat = np.float32(dat)
 out_vol = slice2vol_pred(model1.predict, dat, 64, step_size=10)
 #%%
 t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0])
-t1.to_filename('rec_t1.nii.gz')
+t1.to_filename('TBI_INVJH729XF3_rec_t1.nii.gz')
 
 t2 = ni.new_img_like(t1o, out_vol[:, :, :, 1])
-t2.to_filename('rec_t2.nii.gz')
+t2.to_filename('TBI_INVJH729XF3_rec_t2.nii.gz')
 
 flair = ni.new_img_like(t1o, out_vol[:, :, :, 2])
-flair.to_filename('rec_flair.nii.gz')
+flair.to_filename('TBI_INVJH729XF3_rec_flair.nii.gz')
 
 err = ni.new_img_like(t1o, np.mean((out_vol - dat)**2, axis=3))
-err.to_filename('rec_err.nii.gz')
+err.to_filename('TBI_INVJH729XF3_rec_err.nii.gz')
 
 np.savez('lesion_det.npz', out_vol=out_vol, dat=dat)
 print('vol created')
