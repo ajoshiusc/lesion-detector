@@ -4,7 +4,7 @@ from keras.callbacks import TensorBoard
 from keras import backend as K
 from keras import optimizers
 import matplotlib.pyplot as plt
-from deep_auto_encoder import auto_encoder
+from deep_auto_encoder2 import auto_encoder
 
 d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_30__32_nf.npz')
 data=d['data']
@@ -35,7 +35,7 @@ zplace=np.where(var != 0)[0]
 test_data=test_data[zplace,:,:,:]
 
 loss='mean_squared_error'
-loss='logcosh'
+loss='SV'
 alpha=1
 window_size=64
 model=auto_encoder(window_size,loss,alpha)
@@ -50,4 +50,4 @@ model.fit(train_data,train_data,
                 validation_data=(val_data, val_data),
 
                callbacks=[TensorBoard(log_dir='/tmp/tb')])
-model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_logcosh.h5')
+model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_SV.h5')
