@@ -22,9 +22,9 @@ tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 data = read_data(
     study_dir=data_dir,
     subids=tbidoneIds,
-    nsub=10,
+    nsub=30,
     psize=[64, 64],
-    npatch_perslice=16)
+    npatch_perslice=32)
 
 model1 = pca_ae([64, 64, 3], 2 * 2 * 512)
 model1.compile(optimizer='adamax', loss='mse')
