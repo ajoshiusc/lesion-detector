@@ -4,20 +4,23 @@ import os
 import numpy as np
 from sklearn.feature_extraction.image import extract_patches_2d
 from tqdm import tqdm
+from scipy.ndimage.morphology import binary_erosion
 
 
-def read_data(study_dir, subids, nsub, psize, npatch_perslice):
+def read_data(study_dir, subids, nsub, psize, npatch_perslice, erode_sz=1):
+    # erode_sz: reads the mask and erodes it by given number of voxels
     #    dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
     patch_data = np.zeros((0, 0, 0, 0))
     for subj in subids:
 
-        t1file = os.path.join(study_dir, subj, 'T1mni.nii.gz')
-        t2file = os.path.join(study_dir, subj, 'T2mni.nii.gz')
-        fl = os.path.join(study_dir, subj, 'FLAIRmni.nii.gz')
+        t1_file = os.path.join(study_dir, subj, 'T1mni.nii.gz')
+        t1_mask_file = os.path.join(study_dir, subj, 'T1mni.mask.nii.gz')
+        t2_file = os.path.join(study_dir, subj, 'T2mni.nii.gz')
+        flair_file = os.path.join(study_dir, subj, 'FLAIRmni.nii.gz')
 
-        if not (os.path.isfile(t1file) and os.path.isfile(t2file)
-                and os.path.isfile(fl)):
+        if not (os.path.isfile(t1_file) and os.path.isfile(t1_mask_file)
+                and os.path.isfile(t2_file) and os.path.isfile(flair_file)):
             continue
 
         if subno < nsub:
@@ -26,9 +29,10 @@ def read_data(study_dir, subids, nsub, psize, npatch_perslice):
         else:
             break
         # Read the three images
-        t1 = nl.image.load_img(t1file).get_data()
-        t2 = nl.image.load_img(t2file).get_data()
-        flair = nl.image.load_img(fl).get_data()
+        t1 = nl.image.load_img(t1_file).get_data()
+        t2 = nl.image.load_img(t2_file).get_data()
+        flair = nl.image.load_img(flair_file).get_data()
+        t1_msk = nl.image.load_img(t1_mask_file).get_data()
 
         p = np.percentile(np.ravel(t1), 95)  #normalize to 95 percentile
         t1 = np.float32(t1) / p
@@ -39,7 +43,9 @@ def read_data(study_dir, subids, nsub, psize, npatch_perslice):
         p = np.percentile(np.ravel(flair), 95)  #normalize to 95 percentile
         flair = np.float32(flair) / p
 
-        imgs = np.stack((t1, t2, flair), axis=3)
+        t1_msk = binary_erosion(t1_msk, iterations=erode_sz)
+
+        imgs = np.stack((t1, t2, flair, t1_msk), axis=3)
 
         for sliceno in range(imgs.shape[2]):
             ptch = extract_patches_2d(
@@ -50,12 +56,6 @@ def read_data(study_dir, subids, nsub, psize, npatch_perslice):
                 patch_data = ptch
             else:
                 patch_data = np.concatenate((patch_data, ptch), axis=0)
-
-        # Read coronal slices
-
-        #        create image
-
-        #        create random patches
 
     return patch_data  # npatch x width x height x channels
 
@@ -85,6 +85,6 @@ def slice2vol_pred(model_pred, vol_data, im_size, step_size=1):
 
 #        print(j ,'out of', vol_size[1] - im_size)
 
-    out_vol = out_vol / (indf[...,None] + 1e-12)  #
+    out_vol = out_vol / (indf[..., None] + 1e-12)  #
 
     return out_vol
