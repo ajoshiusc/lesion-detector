@@ -3,12 +3,16 @@
 # [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ajoshiusc/lesion-detector/blob/master/main_anatomy_map.ipynb)
 
 # In[1]:
-from datautils import read_data, slice2vol_pred
+from datautils import read_data, slice2vol_pred, binary_erosion
 from pca_autoencoder import pca_autoencoder_masked as pca_ae_msk
 import keras, keras.layers as L
+from keras.models import load_model
 import numpy as np
 from keras.losses import mse
 import nilearn.image as ni
+
+ERODE_SZ = 3
+DO_TRAINING = 1
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
 tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot_done.txt'
@@ -19,29 +23,31 @@ with open(tbi_done_list) as f:
 # Get the list of subjects that are correctly registered
 tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 
-data, mask_data = read_data(
-    study_dir=data_dir,
-    subids=tbidoneIds,
-    nsub=30,
-    psize=[64, 64],
-    npatch_perslice=32,
-    erode_sz=5)
+if DO_TRAINING:
+    model1 = pca_ae_msk(64, 2 * 2 * 512)
 
-model1 = pca_ae_msk(64, 2 * 2 * 512)
+    data, mask_data = read_data(
+        study_dir=data_dir,
+        subids=tbidoneIds,
+        nsub=30,
+        psize=[64, 64],
+        npatch_perslice=32,
+        erode_sz=ERODE_SZ)
 
-model1.fit(
-    x=[data, mask_data[..., None]],
-    y=data * mask_data[..., None],
-    shuffle=False,
-    validation_split=.2,
-    batch_size=128,
-    epochs=200)
+    model1.fit(
+        x=[data, mask_data[..., None]],
+        y=data * mask_data[..., None],
+        shuffle=False,
+        validation_split=.2,
+        batch_size=128,
+        epochs=200)
 
-model1.save('model1.h5')
+    data2 = model1.predict([data, mask_data[..., None]])
+    print(np.mean((data2.flatten() - data.flatten())**2))
 
-data2 = model1.predict([data, mask_data[..., None]])
+    model1.save('model1.h5')
 
-print(np.mean((data2.flatten() - data.flatten())**2))
+model1 = load_model('model1.h5')
 
 t1 = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.nii.gz'
@@ -59,23 +65,36 @@ flair = ni.load_img(
 t1o = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.nii.gz'
 )
+t1msko = ni.load_img(
+    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.mask.nii.gz'
+)
+
+t1msk = binary_erosion(t1msk, iterations=ERODE_SZ)
+
+pt1 = np.percentile(np.ravel(t1), 95)  #normalize to 95 percentile
+t1 = np.float32(t1) / pt1
+
+pt2 = np.percentile(np.ravel(t2), 95)  #normalize to 95 percentile
+t2 = np.float32(t2) / pt2
+
+pflair = np.percentile(np.ravel(flair), 95)  #normalize to 95 percentile
+flair = np.float32(flair) / pflair
 
 dat = np.stack((t1, t2, flair), axis=3)
-
-print(dat.shape)
-dat = np.float32(dat)
 
 #build_pca_autoencoder(model1, td, [64, 64, 3], step_size=1)
 out_vol = slice2vol_pred(model1.predict, dat, t1msk, 64, step_size=10)
 #%%
-t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0])
+t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0] * pt1)
 t1.to_filename('TBI_INVJH729XF3_rec_t1.nii.gz')
 
+t1mskfile = ni.new_img_like(t1msko, t1msk)
+t1mskfile.to_filename('TBI_INVJH729XF3_rec_t1.mask.nii.gz')
 
-t2 = ni.new_img_like(t1o, out_vol[:, :, :, 1])
+t2 = ni.new_img_like(t1o, out_vol[:, :, :, 1] * pt2)
 t2.to_filename('TBI_INVJH729XF3_rec_t2.nii.gz')
 
-flair = ni.new_img_like(t1o, out_vol[:, :, :, 2])
+flair = ni.new_img_like(t1o, out_vol[:, :, :, 2] * pflair)
 flair.to_filename('TBI_INVJH729XF3_rec_flair.nii.gz')
 
 err = ni.new_img_like(t1o, np.mean((out_vol - dat)**2, axis=3))
