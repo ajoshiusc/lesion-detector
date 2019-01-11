@@ -22,10 +22,10 @@ tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 data, mask_data = read_data(
     study_dir=data_dir,
     subids=tbidoneIds,
-    nsub=3,
+    nsub=30,
     psize=[64, 64],
     npatch_perslice=32,
-    erode_sz=1)
+    erode_sz=5)
 
 model1 = pca_ae_msk(64, 2 * 2 * 512)
 
@@ -35,7 +35,7 @@ model1.fit(
     shuffle=False,
     validation_split=.2,
     batch_size=128,
-    epochs=20)
+    epochs=200)
 
 model1.save('model1.h5')
 
