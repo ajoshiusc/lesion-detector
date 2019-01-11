@@ -1,7 +1,9 @@
-import keras, keras.layers as L
+from keras.models import Model
+from keras.layers import (Input, Flatten, Dense, Reshape, Multiply)
 import numpy as np
 
-def pca_autoencoder(img_shape=[64, 64, 3], code_size=32):
+
+def pca_autoencoder_old(img_shape=[64, 64, 3], code_size=32):
     pca_ae = keras.models.Sequential()
     # Input layer
     pca_ae.add(L.InputLayer(img_shape))
@@ -17,9 +19,30 @@ def pca_autoencoder(img_shape=[64, 64, 3], code_size=32):
     return pca_ae
 
 
-def my_nn(image_size, code_size=32):
-    pca_ae=pca_autoencoder(image_size, code_size)
-    msk = keras.models.Sequential()
-    msk.add(L.InputLayer(img_shape))
+def pca_autoencoder(img_shape=[64, 64, 3], code_size=32):
 
-    L.Multiply(pca_ae, msk)
+    input_imgs = Input(shape=img_shape)
+
+    flattened_input = Flatten()(input_imgs)
+    # Encoded space
+    encoded_space = Dense(code_size)(flattened_input)
+    # Decoded space
+    decompressed = Dense(np.prod(img_shape))(encoded_space)
+    # Output units should be image_size * image_size * channels
+    output_imgs = Reshape(img_shape)(decompressed)
+
+    return input_imgs, output_imgs
+
+
+def pca_autoencoder_masked(image_size, code_size=32):
+
+    input_imgs, output_imgs = pca_autoencoder([image_size, image_size, 3],
+                                              code_size)
+
+    msk_input = Input(shape=[image_size, image_size, 1])
+    mskd_output_imgs = Multiply()([output_imgs, msk_input])
+
+    model = Model(inputs=[input_imgs, msk_input], outputs=mskd_output_imgs)
+    model.compile(optimizer='adamax', loss='mse')
+
+    return model

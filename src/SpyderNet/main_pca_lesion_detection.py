@@ -4,7 +4,7 @@
 
 # In[1]:
 from datautils import read_data, slice2vol_pred
-from pca_autoencoder import pca_autoencoder as pca_ae
+from pca_autoencoder import pca_autoencoder_masked as pca_ae_msk
 import keras, keras.layers as L
 import numpy as np
 from keras.losses import mse
@@ -19,33 +19,37 @@ with open(tbi_done_list) as f:
 # Get the list of subjects that are correctly registered
 tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 
-data = read_data(
+data, mask_data = read_data(
     study_dir=data_dir,
     subids=tbidoneIds,
-    nsub=30,
+    nsub=3,
     psize=[64, 64],
-    npatch_perslice=32)
+    npatch_perslice=32,
+    erode_sz=1)
 
-model1 = pca_ae([64, 64, 3], 2 * 2 * 512)
-model1.compile(optimizer='adamax', loss='mse')
+model1 = pca_ae_msk(64, 2 * 2 * 512)
 
 model1.fit(
-    x=data,
-    y=data,
-    shuffle=True,
+    x=[data, mask_data[..., None]],
+    y=data * mask_data[..., None],
+    shuffle=False,
     validation_split=.2,
-    batch_size=32,
-    epochs=100)
+    batch_size=128,
+    epochs=20)
 
 model1.save('model1.h5')
 
-data2 = model1.predict(data)
+data2 = model1.predict([data, mask_data[..., None]])
 
 print(np.mean((data2.flatten() - data.flatten())**2))
 
 t1 = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.nii.gz'
 ).get_data()
+t1msk = np.float32(
+    ni.load_img(
+        '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.mask.nii.gz'
+    ).get_data() > 0)
 t2 = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T2mni.nii.gz'
 ).get_data()
@@ -62,10 +66,11 @@ print(dat.shape)
 dat = np.float32(dat)
 
 #build_pca_autoencoder(model1, td, [64, 64, 3], step_size=1)
-out_vol = slice2vol_pred(model1.predict, dat, 64, step_size=10)
+out_vol = slice2vol_pred(model1.predict, dat, t1msk, 64, step_size=10)
 #%%
 t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0])
 t1.to_filename('TBI_INVJH729XF3_rec_t1.nii.gz')
+
 
 t2 = ni.new_img_like(t1o, out_vol[:, :, :, 1])
 t2.to_filename('TBI_INVJH729XF3_rec_t2.nii.gz')

@@ -32,7 +32,7 @@ def read_data(study_dir, subids, nsub, psize, npatch_perslice, erode_sz=1):
         t1 = nl.image.load_img(t1_file).get_data()
         t2 = nl.image.load_img(t2_file).get_data()
         flair = nl.image.load_img(flair_file).get_data()
-        t1_msk = nl.image.load_img(t1_mask_file).get_data()
+        t1_msk = np.float32(nl.image.load_img(t1_mask_file).get_data() > 0)
 
         p = np.percentile(np.ravel(t1), 95)  #normalize to 95 percentile
         t1 = np.float32(t1) / p
@@ -53,14 +53,17 @@ def read_data(study_dir, subids, nsub, psize, npatch_perslice, erode_sz=1):
                 patch_size=psize,
                 max_patches=npatch_perslice)
             if patch_data.shape[0] == 0:
-                patch_data = ptch
+                patch_data = ptch[..., :-1]
+                mask_data = ptch[..., 1]
             else:
-                patch_data = np.concatenate((patch_data, ptch), axis=0)
+                patch_data = np.concatenate((patch_data, ptch[..., :-1]),
+                                            axis=0)
+                mask_data = np.concatenate((mask_data, ptch[..., -1]), axis=0)
 
-    return patch_data  # npatch x width x height x channels
+    return patch_data, mask_data  # npatch x width x height x channels
 
 
-def slice2vol_pred(model_pred, vol_data, im_size, step_size=1):
+def slice2vol_pred(model_pred, vol_data, mask_data, im_size, step_size=1):
     # model_pred: predictor that gives 2d images as outputs
     # vol_data this is 3d images + 4th dim for different modalities
     # im_size number with size of images (for 64x64 images) it is 64
@@ -73,8 +76,10 @@ def slice2vol_pred(model_pred, vol_data, im_size, step_size=1):
     print('Putting together slices to form volume')
     for j in tqdm(range(0, vol_size[1] - im_size, step_size)):
         for k in range(0, vol_size[2] - im_size, step_size):
-            out_vol[:, j:im_size + j, k:im_size + k, :] += model_pred(
-                vol_data[:, j:im_size + j, k:im_size + k])
+            out_vol[:, j:im_size + j, k:im_size + k, :] += model_pred([
+                vol_data[:, j:im_size + j, k:im_size + k],
+                mask_data[:, j:im_size + j, k:im_size + k, None]
+            ])
             #                        [
             #                        vol_data[:, j:im_size + j, k:im_size + k, 0, None],
             #                        vol_data[:, j:im_size + j, k:im_size + k, 1, None],
