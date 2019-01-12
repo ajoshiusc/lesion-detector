@@ -100,6 +100,10 @@ flair.to_filename('TBI_INVJH729XF3_rec_flair.nii.gz')
 err = ni.new_img_like(t1o, np.mean((out_vol - dat)**2, axis=3))
 err.to_filename('TBI_INVJH729XF3_rec_err.nii.gz')
 
+err = ni.new_img_like(
+    t1o, np.mean((out_vol[..., 2, None] - dat[..., 2, None])**2, axis=3))
+err.to_filename('TBI_INVJH729XF3_rec_flair_err.nii.gz')
+
 np.savez('lesion_det.npz', out_vol=out_vol, dat=dat)
 print('vol created')
 print(out_vol.shape)
