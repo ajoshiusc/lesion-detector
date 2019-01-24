@@ -11,7 +11,7 @@ import numpy as np
 from keras.losses import mse
 import nilearn.image as ni
 
-ERODE_SZ = 3
+ERODE_SZ = 1
 DO_TRAINING = 1
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
