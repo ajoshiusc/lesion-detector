@@ -2,9 +2,6 @@ import nilearn.image
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-
-sys.path.insert(0, '/big_disk/akrami/git_repos/lesion-detector/src')
-sys.path.insert(0, '/big_disk/akrami/git_repos/lesion-detector/src/SpyderNet')
 from datautils import read_data
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/'

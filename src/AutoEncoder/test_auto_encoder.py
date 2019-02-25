@@ -53,7 +53,7 @@ for k in range(5):
 
 plt.show()
 
-model=load_model('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_SV.h5',custom_objects={'SV': square_loss(alpha)}) 
+model=load_model('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_SV_new.h5',custom_objects={'SV': square_loss(alpha)}) 
 
 x_test_noisy=test_data.copy()
 #x_test_noisy[640,4:16,10:30,2] = 1.6
