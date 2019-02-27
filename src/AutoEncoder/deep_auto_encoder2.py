@@ -77,6 +77,15 @@ def TV_reconstructed_loss(alpha):
         return TV_reconstructed_coef(y_true, y_pred, alpha)
     return TV_R
 
+def FLAIR_coef(y_true, y_pred,alpha):
+        term1= tf.reduce_mean(tf.squared_difference(y_true[:,:,:,2:3], y_pred))
+        return term1
+
+def FLAIR_loss(alpha):
+    def MSE_FLAIR(y_true, y_pred):
+        return FLAIR_coef(y_true, y_pred, alpha)
+    return MSE_FLAIR
+
 def auto_encoder(input_size,loss1,alpha):
 
     input_img = Input(shape=(input_size, input_size,3))  # adapt this if using `channels_first` image data format
@@ -114,13 +123,15 @@ def auto_encoder(input_size,loss1,alpha):
     x = UpSampling2D((2, 2))(x)
     x = Conv2D(16, (4, 4,), activation='relu', padding='same')(x)
     x = UpSampling2D((2, 2))(x)
-    decoded = Conv2D(3, (3, 3), activation='relu', padding='same')(x)
+    decoded = Conv2D(1, (3, 3), activation='relu', padding='same')(x)
     if loss1=='SV':
       loss2=square_loss(alpha)
     elif loss1=='RAE':
       loss2=corrent_loss(alpha)
     elif loss1=='TV_R':
       loss2=TV_reconstructed_loss(alpha)
+    elif loss1=='MSE_FLAIR':
+      loss2=FLAIR_loss(alpha)
     else:
       loss2=loss1
 

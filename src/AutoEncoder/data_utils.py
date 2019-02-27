@@ -92,17 +92,31 @@ def read_data_block(study_dir, subids, nsub, psize, stride):
         p = np.percentile(np.ravel(flair), 95)  #normalize to 95 percentile
         flair = np.float32(flair) / p
 
-        imgs = np.stack((t1, t2, flair), axis=3)
+        vol_data = np.stack((t1, t2, flair), axis=3)
 
-        window_shape = (1, 2, 2)
-        B = view_as_windows(A, window_shape)
+        #window_shape = (64, 64, 1, 1)
+        #temp = view_as_windows(imgs, window_shape, step=8)
+        #patch_data=temp.reshape(temp.shape[0]*temp.shape[1])
 
+        
+        out_vol = [] # output volume
+        vol_size = vol_data.shape
+        step_size=stride
+        #im_size= psize
+        for j in tqdm(range(0, vol_size[0] - psize[0], step_size)):
+            for k in range(0, vol_size[1] - psize[1], step_size):
+                temp=np.transpose(vol_data[j:psize[0] + j,k:psize[1] + k,:,:],(2,0,1,3))
+                out_vol = temp.squeeze()
+                patch_data = np.concatenate((patch_data, out_vol), axis=0)
+
+                
+        
         # Read coronal slices
 
         #        create image
 
         #        create random patches
-
+    patch_data = np.concatenate((patch_data, out_vol), axis=0)
     return patch_data  # npatch x width x height x channels
 
 

@@ -33,7 +33,7 @@ test_data=test_data[zplace,:,:,:]
 
 loss='TV_R'
 #loss='SV'
-alpha=0.5
+alpha=0.01
 window_size=64
 model=auto_encoder(window_size,loss,alpha)
 X=train_data
@@ -62,4 +62,4 @@ for it in range(iteration):
     S = l21shrink(lamb, (X - L))
    
 
-model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_L12_20iter_lamb1_alpha0.5.h5')
+model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_L12_20iter_lamb1_alpha0.01.h5')
