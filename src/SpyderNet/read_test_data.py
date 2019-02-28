@@ -1,10 +1,14 @@
 import numpy as np
 import os
 import nilearn as nl
+from skimage.io import imsave
+from tqdm import tqdm
+
+
 def read_test_data(study_dir, subid):
-    t1file = os.path.join(study_dir, subid, 'T1mni.nii.gz')
-    t2file = os.path.join(study_dir, subid, 'T1mni.nii.gz')
-    fl = os.path.join(study_dir, subid, 'FLAIRmni.nii.gz')
+    t1file = os.path.join(study_dir, subid, 'T1r.nii.gz')
+    t2file = os.path.join(study_dir, subid, 'T2r.nii.gz')
+    fl = os.path.join(study_dir, subid, 'FLAIRr.nii.gz')
     if not (os.path.isfile(t1file) and os.path.isfile(t2file)
             and os.path.isfile(fl)):
         return 0
@@ -23,4 +27,20 @@ def read_test_data(study_dir, subid):
     flair = np.float32(flair) / p
 
     imgs = np.stack((t1, t2, flair), axis=3)
+    imgs[imgs < 0] = 0
+    imgs[imgs > 1] = 1
     return imgs
+
+
+def subdata2png(study_dir, subid, axis=2):
+
+    imgs = read_test_data(study_dir, subid)
+
+    for ind in tqdm(range(imgs.shape[axis])):
+
+        im = imgs.take(indices=ind, axis=axis).transpose((1, 0, 2))
+        im = np.flip(im, axis=0)
+
+        imsave(
+            os.path.join(study_dir, subid, 'pngs',
+                         np.str(ind) + '.png'), im)
