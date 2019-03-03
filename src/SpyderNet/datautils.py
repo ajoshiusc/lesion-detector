@@ -5,9 +5,18 @@ import numpy as np
 from sklearn.feature_extraction.image import extract_patches_2d
 from tqdm import tqdm
 from scipy.ndimage.morphology import binary_erosion
+import random
+from sklearn.datasets import make_blobs
+from scipy.ndimage import gaussian_filter
 
 
-def read_data(study_dir, subids, nsub, psize, npatch_perslice, erode_sz=1):
+def read_data(study_dir,
+              subids,
+              nsub,
+              psize,
+              npatch_perslice,
+              erode_sz=1,
+              lesioned=True):
     # erode_sz: reads the mask and erodes it by given number of voxels
     #    dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
@@ -47,7 +56,35 @@ def read_data(study_dir, subids, nsub, psize, npatch_perslice, erode_sz=1):
 
         imgs = np.stack((t1, t2, flair, t1_msk), axis=3)
 
-        for sliceno in range(imgs.shape[2]):
+        if lesioned == True:
+            lesion = np.zeros(t1.shape)
+            mskx, msky, mskz = np.where(t1 > 0)
+            ind = random.randint(0, mskx.shape[0])
+            mskx = mskx[ind]
+            msky = msky[ind]
+            mskz = mskz[ind]
+            #    xyz = np.unravel_index(ind, shape=t1.shape)
+            centr = np.array([mskx, msky, mskz])[:, None]
+            blob, _ = make_blobs(
+                n_samples=10,
+                n_features=3,
+                centers=centr,
+                cluster_std=random.uniform(0, 30))
+
+            blob = np.int16(
+                np.clip(np.round(blob), [0, 0, 0],
+                        np.array(t1.shape) - 1))
+            lesion[blob[:, 0], blob[:, 1], blob[:, 2]] = 1.0
+            #lesion[blob.ravel]=1.0
+
+            lesion = gaussian_filter(lesion, 5)
+            lesion /= lesion.max()
+            imgs = np.concatenate(
+                (imgs[:, :, :, :3], lesion[:, :, :, None], imgs[:, :, :, -1:]),
+                axis=3)
+
+        # Generate random patches
+        for sliceno in tqdm(range(imgs.shape[2])):
             ptch = extract_patches_2d(
                 image=imgs[:, :, sliceno, :],
                 patch_size=psize,
