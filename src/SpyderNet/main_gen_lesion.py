@@ -9,7 +9,7 @@ def main():
 
 
     gen_lesion(study_dir=data_dir, subid=subid)
-    subdata2png(study_dir=data_dir, subid=subid, axis=0)
+    #subdata2png(study_dir=data_dir, subid=subid, axis=0)
 
 
     # Read data
