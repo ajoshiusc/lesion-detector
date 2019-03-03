@@ -20,7 +20,7 @@ def read_data(study_dir,
     # erode_sz: reads the mask and erodes it by given number of voxels
     #    dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
-    patch_data = np.zeros((0, 0, 0, 0))
+
     for subj in subids:
 
         t1_file = os.path.join(study_dir, subj, 'T1mni.nii.gz')
@@ -84,19 +84,29 @@ def read_data(study_dir,
                 axis=3)
 
         # Generate random patches
-        for sliceno in tqdm(range(imgs.shape[2])):
+        # preallocate
+        if subno == 1:
+            num_slices = imgs.shape[2]
+            patch_data = np.zeros((nsub * npatch_perslice * num_slices, psize[0],
+                                   psize[1], imgs.shape[-1]))
+
+        for sliceno in tqdm(range(num_slices)):
             ptch = extract_patches_2d(
                 image=imgs[:, :, sliceno, :],
                 patch_size=psize,
                 max_patches=npatch_perslice)
-            if patch_data.shape[0] == 0:
-                patch_data = ptch[..., :-1]
-                mask_data = ptch[..., 1]
-            else:
-                patch_data = np.concatenate((patch_data, ptch[..., :-1]),
-                                            axis=0)
-                mask_data = np.concatenate((mask_data, ptch[..., -1]), axis=0)
 
+            strt_ind = (
+                subno -
+                1) * npatch_perslice * num_slices + sliceno * npatch_perslice
+
+            end_ind = (subno - 1) * npatch_perslice * num_slices + (
+                sliceno + 1) * npatch_perslice
+
+            patch_data[strt_ind:end_ind, :, :, :] = ptch
+
+    mask_data = patch_data[:, :, :, -1]
+    patch_data = patch_data[:, :, :, :-1]
     return patch_data, mask_data  # npatch x width x height x channels
 
 

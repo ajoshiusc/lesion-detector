@@ -36,9 +36,11 @@ if DO_TRAINING:
 
     lesion = data[:, :, :, -1]
 
-    data[:, :, :, 1:3] = data[:, :, :, 1:3] + lesion[:, :, :, None]
+    l_data = data.copy()
+    l_data[:, :, :, 1:3] = l_data[:, :, :, 1:3] + lesion[:, :, :, None]
+
     model1.fit(
-        x=[data[:, :, :, :3], mask_data[..., None]],
+        x=[l_data[:, :, :, :3], mask_data[..., None]],
         y=data[:, :, :, :3] * mask_data[..., None],
         shuffle=False,
         validation_split=.2,
