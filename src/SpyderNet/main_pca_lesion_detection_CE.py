@@ -12,7 +12,7 @@ from keras.losses import mse
 import nilearn.image as ni
 
 ERODE_SZ = 1
-DO_TRAINING = 0
+DO_TRAINING = 1
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1'
 tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt'
@@ -29,14 +29,19 @@ if DO_TRAINING:
     data, mask_data = read_data(
         study_dir=data_dir,
         subids=tbidoneIds,
-        nsub=30,
+        nsub=3,
         psize=[64, 64],
         npatch_perslice=32,
         erode_sz=ERODE_SZ)
 
+    lesion = data[:, :, :, -1]
+
+    l_data = data.copy()
+    l_data[:, :, :, 1:3] = l_data[:, :, :, 1:3] + lesion[:, :, :, None]
+
     model1.fit(
-        x=[data, mask_data[..., None]],
-        y=data * mask_data[..., None],
+        x=[l_data[:, :, :, :3], mask_data[..., None]],
+        y=data[:, :, :, :3] * mask_data[..., None],
         shuffle=False,
         validation_split=.2,
         batch_size=128,
