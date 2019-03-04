@@ -2,7 +2,7 @@ import nilearn.image
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from datautils import read_data_block
+from data_utils import read_data_block
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/'
 with open('/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt') as f:
@@ -15,6 +15,6 @@ data = read_data_block(
     subids=tbidoneIds,
     nsub=30,
     psize=[window_size, window_size],
-    stride=8)
+    stride=20)
 #np.random.shuffle(data)
-np.savez('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_30__block_nf.npz', data=data)
+np.savez('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_30__block20_nf.npz', data=data)

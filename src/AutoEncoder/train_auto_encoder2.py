@@ -10,9 +10,12 @@ d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_da
 data=d['data']
 #print(data.shape)
 #npatch=(182 - 64)**2
-trainsize=np.floor(0.8*30*32*182)
-testsize=np.floor(0.9*30*32*182)
+#trainsize=np.floor(0.8*6*8*30*182)
+#testsize=np.floor(0.9*6*8*30*182)
+trainsize=np.floor(0.8*32*30*182)
+testsize=np.floor(0.9*32*30*182)
 #trainsize.astype(int)
+print(data.shape)
 
 train_data = data[0:int(trainsize), :, :, :]
 print(train_data.shape)
@@ -36,10 +39,10 @@ zplace=np.where(var != 0)[0]
 test_data=test_data[zplace,:,:,:]
 
 
-checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
-loss='MSE_FLAIR'
+checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2_TV_0.01.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
+loss='TV_R'
 #loss='TV'
-alpha=0
+alpha=0.01
 window_size=64
 model=auto_encoder(window_size,loss,alpha)
 history_callback=model.fit(train_data,train_data,
@@ -56,10 +59,10 @@ history_callback=model.fit(train_data,train_data,
 #model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF.h5')
 #callbacks=[TensorBoard(log_dir='/tmp/tb')]
 
-#acc_history = history_callback.history["loss"]
-#Train_acc_history = np.array(acc_history)
-#acc_history = history_callback.history["val_loss"]
-#Val_acc_history = np.array(acc_history)
+acc_history = history_callback.history["loss"]
+Train_acc_history = np.array(acc_history)
+acc_history = history_callback.history["val_loss"]
+Val_acc_history = np.array(acc_history)
 
 #ig, ax1 = plt.subplots()
     #ax1.set_title("Initial Learning rate =" + str(ilearning_rate) +"  Activation= relu")
@@ -68,4 +71,4 @@ history_callback=model.fit(train_data,train_data,
 #ax1.set_xlabel('epoches')
 #plt.plot(Train_acc_history,label='Train')  
 #plt.legend()
-#np.savetxt("p_model_200_512_merryland_30_MSEF_Val_loss_history.txt", Val_acc_history, delimiter=",")
+np.savetxt("p_model_200_512_merryland_30_MSEF2_block_Val_loss_history_TV_R_0.01.txt", Val_acc_history, delimiter=",")

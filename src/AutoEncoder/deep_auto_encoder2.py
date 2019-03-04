@@ -59,16 +59,16 @@ def _logcosh(x):
     return x + nn.softplus(-2. * x) - math_ops.log(2.)
 
 def total_variation_of_reconstructed(images):
-    pixel_dif1 = images[1:, :, :] - images[:-1, :, :]
-    pixel_dif2 = images[:, 1:, :] - images[:, :-1, :]
+    pixel_dif1 = images[:,1:, :, :] - images[:,:-1, :, :]
+    pixel_dif2 = images[:,:, 1:, :] - images[:,:, :-1, :]
     sum_axis = None
     apx_total_variation = (
-        math_ops.reduce_mean(_logcosh(pixel_dif1), axis=sum_axis) +
-        math_ops.reduce_mean(_logcosh(pixel_dif2), axis=sum_axis))
+        math_ops.reduce_mean(_logcosh(3*pixel_dif1), axis=sum_axis) +
+        math_ops.reduce_mean(_logcosh(3*pixel_dif2), axis=sum_axis))
     return apx_total_variation
 
 def TV_reconstructed_coef(y_true, y_pred, alpha):
-    term1= tf.reduce_mean(tf.squared_difference(y_true, y_pred))
+    term1= tf.reduce_mean(tf.squared_difference(y_true[:,:,:,2:3], y_pred))
     term2=total_variation_of_reconstructed(y_pred)
     return ((1-alpha)*term1+alpha*term2)
 
