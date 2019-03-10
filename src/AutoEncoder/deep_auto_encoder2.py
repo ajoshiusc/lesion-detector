@@ -3,9 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D
+from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras import optimizers
-import keras.backend as K
+from tensorflow.python.keras import backend as K
 import numpy as np
 from sklearn.metrics import mean_squared_error
 import math
@@ -23,16 +24,24 @@ delta=0.05
 
 ###SV
 def square_variation(images, name=None):
-    pixel_dif1 = images[1:, :, :] - images[:-1, :, :]
-    pixel_dif2 = images[:, 1:, :] - images[:, :-1, :]
-    sum_axis = None
-    square_variation = (
-        math_ops.reduce_mean(math_ops.square(pixel_dif1), axis=sum_axis) +
-        math_ops.reduce_mean(math_ops.square(pixel_dif2), axis=sum_axis))
+    ndims=images.get_shape().ndims
+    if ndims == 3:
+      pixel_var1=K.zeros_like(images[1:2, :, :])
+      pixel_var2=K.zeros_like(images[:, 1:2, :])
+      pixel_dif1  = tf.concat(((images[1:, :, :] - images[:-1, :, :]), pixel_var1), axis=1)
+      pixel_dif2  = tf.concat(((images[:, 1:, :] - images[:, :-1, :]), pixel_var2), axis=2)
+    elif ndims == 4:
+      pixel_var1=K.zeros_like(images[:, 1:2, :, :])
+      pixel_var2=K.zeros_like(images[:, :, 1:2, :])
+      pixel_dif1  = tf.concat(((images[:, 1:, :, :] - images[:, :-1, :, :]), pixel_var1), axis=1)
+      pixel_dif2  = tf.concat(((images[:, :, 1:, :] - images[:, :, :-1, :]), pixel_var2), axis=2)
+    #sum_axis = -1
+    square_variation = K.mean((math_ops.square(pixel_dif1)) +(math_ops.square(pixel_dif2)),axis=-1)
     return square_variation
 def square_coef(y_true, y_pred, alpha):
-    term1= tf.reduce_mean(tf.squared_difference(y_true, y_pred))
-    term2=square_variation((y_true - y_pred),name=None)
+    #sum_axis = -1
+    term1= K.mean(math_ops.square(y_true- y_pred),axis=-1)
+    term2=square_variation((y_true-y_pred))
     return ((1-alpha)*term1+alpha*term2)
 
 def square_loss(alpha):
@@ -57,35 +66,42 @@ def corrent_loss(alpha):
     return RAE
 def _logcosh(x):
     return x + nn.softplus(-2. * x) - math_ops.log(2.)
-
+### TV of reconstructed error
 def total_variation_of_reconstructed(images):
-    pixel_dif1 = images[:,1:, :, :] - images[:,:-1, :, :]
-    pixel_dif2 = images[:,:, 1:, :] - images[:,:, :-1, :]
-    sum_axis = None
+    ndims=images.get_shape().ndims
+    pixel_dif1=K.zeros_like(images)
+    pixel_dif2=K.zeros_like(images)
+    if ndims == 3:
+      pixel_dif1[1:, :, :] = images[1:, :, :] - images[:-1, :, :]
+      pixel_dif2[:, 1:, :] = images[:, 1:, :] - images[:, :-1, :]
+    elif ndims == 4:
+      pixel_dif1[:, 1:, :, :]  = images[:, 1:, :, :] - images[:, :-1, :, :]
+      pixel_dif2[:, :, 1:, :]  = images[:, :, 1:, :] - images[:, :, :-1, :]
+    sum_axis = -1
     apx_total_variation = (
-        math_ops.reduce_mean(_logcosh(3*pixel_dif1), axis=sum_axis) +
-        math_ops.reduce_mean(_logcosh(3*pixel_dif2), axis=sum_axis))
+        K.mean(_logcosh(3*pixel_dif1), axis=sum_axis) +
+        K.mean(_logcosh(3*pixel_dif2), axis=sum_axis))
     return apx_total_variation
 
 def TV_reconstructed_coef(y_true, y_pred, alpha):
-    term1= tf.reduce_mean(tf.squared_difference(y_true[:,:,:,2:3], y_pred))
-    term2=total_variation_of_reconstructed(y_pred)
+    term1= K.mean(math_ops.square(y_true-y_pred),axis=-1)
+    term2=total_variation_of_reconstructed(y_true-y_pred)
     return ((1-alpha)*term1+alpha*term2)
 
 def TV_reconstructed_loss(alpha):
     def TV_R(y_true, y_pred):
         return TV_reconstructed_coef(y_true, y_pred, alpha)
     return TV_R
-
+### mean square
 def FLAIR_coef(y_true, y_pred,alpha):
-        term1= tf.reduce_mean(tf.squared_difference(y_true[:,:,:,2:3], y_pred))
+        term1=K.mean(math_ops.square(y_true- y_pred),axis=-1)
         return term1
 
 def FLAIR_loss(alpha):
     def MSE_FLAIR(y_true, y_pred):
         return FLAIR_coef(y_true, y_pred, alpha)
     return MSE_FLAIR
-
+#### Auto Encoder
 def auto_encoder(input_size,loss1,alpha):
 
     input_img = Input(shape=(input_size, input_size,3))  # adapt this if using `channels_first` image data format
@@ -138,11 +154,10 @@ def auto_encoder(input_size,loss1,alpha):
 
 
     model = Model(input_img, decoded)
-    opt = optimizers.Adam(lr=0.0001)
-    #opt=optimizers.Nadam(lr=0.002)
+    #opt = optimizers.Adam(lr=0.0001)
+    opt=optimizers.Adam(lr=0.0001)
     model.compile(optimizer=opt, loss=loss2)
-     #model_dice = dice_loss(alpha=0.5)
-  #model.compile(loss=model_dice)
+     
 
 
 

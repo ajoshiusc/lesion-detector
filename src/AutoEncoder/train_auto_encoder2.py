@@ -39,13 +39,13 @@ zplace=np.where(var != 0)[0]
 test_data=test_data[zplace,:,:,:]
 
 
-checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2_TV_0.01.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
-loss='TV_R'
-#loss='TV'
-alpha=0.01
+checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2_SV_1.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
+loss='SV'
+#loss='MSE_FLAIR'
+alpha=1
 window_size=64
 model=auto_encoder(window_size,loss,alpha)
-history_callback=model.fit(train_data,train_data,
+history_callback=model.fit(train_data,train_data[:,:,:,2:3],
 
                 epochs=200,
 
@@ -53,7 +53,7 @@ history_callback=model.fit(train_data,train_data,
 
                 shuffle=True,
 
-                validation_data=(val_data, val_data),
+                validation_data=(val_data, val_data[:,:,:,2:3]),
 
                callbacks=[checkpointer])
 #model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF.h5')
@@ -71,4 +71,4 @@ Val_acc_history = np.array(acc_history)
 #ax1.set_xlabel('epoches')
 #plt.plot(Train_acc_history,label='Train')  
 #plt.legend()
-np.savetxt("p_model_200_512_merryland_30_MSEF2_block_Val_loss_history_TV_R_0.01.txt", Val_acc_history, delimiter=",")
+np.savetxt("p_model_200_512_merryland_30_MSEF2_block_Val_loss_history_SV_1.txt", Val_acc_history, delimiter=",")
