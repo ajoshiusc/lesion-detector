@@ -12,10 +12,10 @@ from keras.losses import mse
 import nilearn.image as ni
 
 ERODE_SZ = 1
-DO_TRAINING = 1
+DO_TRAINING = 0
 
-data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
-tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot_done.txt'
+data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1'
+tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt'
 
 with open(tbi_done_list) as f:
     tbidoneIds = f.readlines()
@@ -45,28 +45,28 @@ if DO_TRAINING:
     data2 = model1.predict([data, mask_data[..., None]])
     print(np.mean((data2.flatten() - data.flatten())**2))
 
-    model1.save('model1.h5')
+    model1.save('maryland_rao_v1_pca_autoencoder.h5')
 
-model1 = load_model('model1.h5')
+model1 = load_model('maryland_rao_v1_pca_autoencoder.h5')
 
 t1 = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVYM889KY4/T1mni.nii.gz'
 ).get_data()
 t1msk = np.float32(
     ni.load_img(
-        '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.mask.nii.gz'
+        '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVYM889KY4/T1mni.mask.nii.gz'
     ).get_data() > 0)
 t2 = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T2mni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVYM889KY4/T2mni.nii.gz'
 ).get_data()
 flair = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/FLAIRmni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVYM889KY4/FLAIRmni.nii.gz'
 ).get_data()
 t1o = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVYM889KY4/T1mni.nii.gz'
 )
 t1msko = ni.load_img(
-    '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/TBI_INVJH729XF3/T1mni.mask.nii.gz'
+    '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVYM889KY4/T1mni.mask.nii.gz'
 )
 
 t1msk = binary_erosion(t1msk, iterations=ERODE_SZ)
@@ -86,23 +86,23 @@ dat = np.stack((t1, t2, flair), axis=3)
 out_vol = slice2vol_pred(model1.predict, dat, t1msk, 64, step_size=10)
 #%%
 t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0] * pt1)
-t1.to_filename('TBI_INVJH729XF3_rec_t1.nii.gz')
+t1.to_filename('TBI_INVYM889KY4_rec_t1.nii.gz')
 
 t1mskfile = ni.new_img_like(t1msko, t1msk)
-t1mskfile.to_filename('TBI_INVJH729XF3_rec_t1.mask.nii.gz')
+t1mskfile.to_filename('TBI_INVYM889KY4_rec_t1.mask.nii.gz')
 
 t2 = ni.new_img_like(t1o, out_vol[:, :, :, 1] * pt2)
-t2.to_filename('TBI_INVJH729XF3_rec_t2.nii.gz')
+t2.to_filename('TBI_INVYM889KY4_rec_t2.nii.gz')
 
 flair = ni.new_img_like(t1o, out_vol[:, :, :, 2] * pflair)
-flair.to_filename('TBI_INVJH729XF3_rec_flair.nii.gz')
+flair.to_filename('TBI_INVYM889KY4_rec_flair.nii.gz')
 
 err = ni.new_img_like(t1o, np.mean((out_vol - dat)**2, axis=3))
-err.to_filename('TBI_INVJH729XF3_rec_err.nii.gz')
+err.to_filename('TBI_INVYM889KY4_rec_err.nii.gz')
 
 err = ni.new_img_like(
     t1o, np.mean((out_vol[..., 2, None] - dat[..., 2, None])**2, axis=3))
-err.to_filename('TBI_INVJH729XF3_rec_flair_err.nii.gz')
+err.to_filename('TBI_INVYM889KY4_rec_flair_err.nii.gz')
 
 np.savez('lesion_det.npz', out_vol=out_vol, dat=dat)
 print('vol created')

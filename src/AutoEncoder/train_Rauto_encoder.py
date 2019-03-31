@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras import backend as K
 from keras import optimizers
 import matplotlib.pyplot as plt
@@ -31,23 +31,28 @@ var=np.mean(var,1)
 zplace=np.where(var != 0)[0]
 test_data=test_data[zplace,:,:,:]
 
-loss='TV_R'
+loss='MSE_FLAIR'
 #loss='SV'
-alpha=0.01
+alpha=1
 window_size=64
 model=auto_encoder(window_size,loss,alpha)
 X=train_data
 L = np.zeros(X.shape)
 S = np.zeros(X.shape)
-iteration=20
+iteration=50
+checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_L12_50_20_MSE.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
 for it in range(iteration):
     print ("Out iteration: " , it)
+    if it==1:
+        epochs_num=200
+    else:
+        epochs_num=20   
     ## alternating project, first project to L
     L = X - S
     ## Using L to train the auto-encoder
-    model.fit(L,L,
+    model.fit(L,L[:,:,:,2:3],
 
-            epochs=50,
+            epochs=epochs_num,
 
             batch_size=128,
 
@@ -55,11 +60,11 @@ for it in range(iteration):
 
             validation_split=.1,
 
-            callbacks=[TensorBoard(log_dir='/tmp/tb')])
+            callbacks=[checkpointer])
             ## get optmized L
     L=model.predict(L)        
     ## alternating project, now project to S and shrink S
     S = l21shrink(lamb, (X - L))
    
 
-model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_L12_20iter_lamb1_alpha0.01.h5')
+

@@ -63,6 +63,7 @@ def read_data_block(study_dir, subids, nsub, psize, stride):
 #    dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
     patch_data = np.zeros((0, 0, 0, 0))
+    #patch_data=[]
     for subj in subids:
 
         t1file = os.path.join(study_dir, subj, 'T1mni.nii.gz')
@@ -102,12 +103,18 @@ def read_data_block(study_dir, subids, nsub, psize, stride):
         out_vol = [] # output volume
         vol_size = vol_data.shape
         step_size=stride
+       
         #im_size= psize
         for j in tqdm(range(0, vol_size[0] - psize[0], step_size)):
             for k in range(0, vol_size[1] - psize[1], step_size):
-                temp=np.transpose(vol_data[j:psize[0] + j,k:psize[1] + k,:,:],(2,0,1,3))
-                out_vol = temp.squeeze()
-                patch_data = np.concatenate((patch_data, out_vol), axis=0)
+               
+                ptch=np.transpose(vol_data[j:psize[0] + j,k:psize[1] + k,:,:],(2,0,1,3))
+                if patch_data.shape[0] == 0:
+                   patch_data = ptch
+                else:
+                   patch_data = np.concatenate((patch_data, ptch), axis=0)
+           
+            
 
                 
         
@@ -116,7 +123,8 @@ def read_data_block(study_dir, subids, nsub, psize, stride):
         #        create image
 
         #        create random patches
-    patch_data = np.concatenate((patch_data, out_vol), axis=0)
+        
+    
     return patch_data  # npatch x width x height x channels
 
 
