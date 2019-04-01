@@ -35,16 +35,19 @@ def proxl1(S, lamd):
 X = np.arange(100)
 Y = 0.3 * X + .7
 
-X = X + np.random.randn(X.shape[0])
+#X = X + np.random.randn(X.shape[0])
 Y = Y + np.random.randn(X.shape[0])
-#Y[5:10] = Y[5:10] + 120
-X[5:10] = X[5:10] - 200
+Y[5:10] = Y[5:10] + 120
+#X[5:10] = X[5:10] - 200
 
-X_orig1 = X
+X_orig1 = X.copy()
+Yorig = Y.copy()
+plt.scatter(X_orig1, Yorig, color='black')
 
-for lamd in np.arange(5, 150, 5):
+for lamd in np.arange(0.1, 60, 5):
     #diabetes = datasets.load_diabetes()
-    X = X_orig1
+    X = X_orig1.copy()
+    Y = Yorig.copy()
 
     indices = (0)
 
@@ -56,29 +59,30 @@ for lamd in np.arange(5, 150, 5):
     ols = linear_model.LinearRegression()
     ols.fit(X, y_train)
 
-    ols_inv = linear_model.LinearRegression()
-    ols_inv.fit(y_train, X)
+#    ols_inv = linear_model.LinearRegression()
+#    ols_inv.fit(y_train, X)
 
     print(ols.intercept_, ols.coef_)
 
-    Xorig = X.copy()
+    
 
-    S = 0 * X
+    S = 0 * Y
 
     for j in range(500):
-        Ld = X - S
+        Ld = Y - S
 
-        ols.fit(Ld, y_train)
-        ols_inv.fit(y_train, Ld)
+        ols.fit(X, Ld)
+#        ols_inv.fit(y_train, Ld)
 
         # Make predictions using the testing set
-        y_pred = ols.predict(Ld)
-        Ld = ols_inv.predict(y_pred)
-        S = X - Ld
+        Ld = ols.predict(X)
+ #       Ld = ols_inv.predict(y_pred)
+        S = Y - Ld
         S = proxl1(S, lamd)
 
-    X = Ld
+    Y = Ld
 
+    y_pred = ols.predict(X)
     # The coefficients
     print('Coefficients: \n', ols.coef_)
     # The mean squared error
@@ -87,12 +91,13 @@ for lamd in np.arange(5, 150, 5):
     print('Variance score: %.2f' % r2_score(y_train, y_pred))
 
     # Plot outputs
-    plt.scatter(Xorig, y_train, color='black')
-    plt.scatter(X, y_pred, color='green')
+#    plt.scatter(X, Y, color='green')
 
-    plt.plot(X, y_pred, color='blue', linewidth=3)
+    plt.plot(X, y_pred, linewidth=1, label = str(lamd))
 
-    plt.xticks(())
-    plt.yticks(())
 
-    plt.show()
+plt.xticks(())
+plt.yticks(())
+plt.legend(loc = 'best')
+
+plt.show()
