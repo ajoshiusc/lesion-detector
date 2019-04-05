@@ -1,21 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-"""
-=========================================================
-Sparsity Example: Fitting only features 1  and 2
-=========================================================
-
-Features 1 and 2 of the diabetes-dataset are fitted and
-plotted below. It illustrates that although feature 2
-has a strong coefficient on the full model, it does not
-give us much regarding `y` when compared to just feature 1
-
-"""
-print(__doc__)
-
-# Code source: Gaël Varoquaux
-# Modified for documentation by Jaques Grobler
-# License: BSD 3 clause
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,11 +7,6 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import datasets, linear_model
 
 
-def proxl1(S, lamd):
-    S[S > lamd] -= lamd
-    S[S < -lamd] += lamd
-    S[(-lamd < S) & (S < lamd)] = 0
-    return S
 
 
 X = np.arange(100)
