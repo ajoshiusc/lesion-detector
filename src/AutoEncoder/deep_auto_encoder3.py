@@ -117,7 +117,7 @@ def auto_encoder(input_size,loss1,alpha):
 
     #up11 = Conv2D(13, 2, activation = 'relu', padding = 'same')(UpSampling2D(size = (2,2))(Conv11))
     Conv12 = Conv2D(3, (4, 4,), activation='relu', padding='same')(Conv11)
-    decoded = Conv2D(3, (3, 3,), activation='relu', padding='same')(Conv12)
+    decoded = Conv2D(1, (3, 3,), activation='relu', padding='same')(Conv12)
 
     if loss1=='SV':
       loss2=square_loss(alpha)

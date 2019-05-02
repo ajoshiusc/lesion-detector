@@ -2,10 +2,10 @@ import nilearn.image
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from datautils import read_data
+from data_utils import read_data
 
-data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/'
-with open('/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt') as f:
+data_dir = '/big_disk/ajoshi/ISLES2015/preproc/Training/'
+with open('/big_disk/ajoshi/ISLES2015/ISLES2015_Training_done.txt') as f:
     tbidoneIds = f.readlines()
 tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 
@@ -13,8 +13,8 @@ window_size=64
 data = read_data(
     study_dir=data_dir,
     subids=tbidoneIds,
-    nsub=30,
+    nsub=5,
     psize=[window_size, window_size],
     npatch_perslice=32)
 #np.random.shuffle(data)
-np.savez('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_30__32_nf.npz', data=data)
+np.savez('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/ISLES2015_5__32_nf.npz', data=data)

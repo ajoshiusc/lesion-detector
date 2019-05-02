@@ -4,10 +4,10 @@ from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras import backend as K
 from keras import optimizers
 import matplotlib.pyplot as plt
-from deep_auto_encoder2 import auto_encoder
-from deep_auto_encoder2 import FLAIR_loss
+from deep_auto_encoder3 import auto_encoder
+#from deep_auto_encoder2 import FLAIR_loss
 from keras.models import load_model
-from deep_auto_encoder2 import square_loss
+#from deep_auto_encoder3 import square_loss
 
 
 d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_30__32_nf.npz')
@@ -44,17 +44,17 @@ test_data=test_data[zplace,:,:,:]
 
 
 checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_TV_R_high_bactchnorm_0.5_abs.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
-loss='TV_R'
+loss='mean_squared_error'
 
-alpha=0.5
+alpha=0
 window_size=64
-model=highpass_auto_encoder(window_size,loss,alpha)
+model=auto_encoder(window_size,loss,alpha)
 #model=load_model('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2_SV_1.h5',custom_objects={'SV': square_loss(alpha)})
 #model=load_model('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2_bactchnorm.h5',custom_objects={'MSE_FLAIR': FLAIR_loss(alpha)})
-model.load_weights('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2_bactchnorm_wights.h5')
+#model.load_weights('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSE_deep3.h5')
 #model.compile(loss='SV')
 
-history_callback=model.fit(5*train_data,5*train_data[:,:,:,2:3],
+history_callback=model.fit(train_data,train_data[:,:,:,2:3],
 
                 epochs=50,
 
@@ -62,7 +62,7 @@ history_callback=model.fit(5*train_data,5*train_data[:,:,:,2:3],
 
                 shuffle=True,
 
-                validation_data=(5*val_data, 5*val_data[:,:,:,2:3]),
+                validation_data=(val_data, val_data[:,:,:,2:3]),
 
                callbacks=[checkpointer])
 #model.save('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF.h5')

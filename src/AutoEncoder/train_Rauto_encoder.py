@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from deep_auto_encoder2 import auto_encoder
 from deep_auto_encoder2 import l21shrink
 
-lamb=1
+
 
 d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/data/tp_data_merryland_30__32_nf.npz')
 data=d['data']
@@ -31,22 +31,21 @@ var=np.mean(var,1)
 zplace=np.where(var != 0)[0]
 test_data=test_data[zplace,:,:,:]
 
-loss='MSE_FLAIR'
+loss='mean_squared_error'
 #loss='SV'
-alpha=1
+alpha=0.1
 window_size=64
 model=auto_encoder(window_size,loss,alpha)
-X=train_data
+X=np.copy(train_data)
 L = np.zeros(X.shape)
 S = np.zeros(X.shape)
-iteration=50
-checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_L12_50_20_MSE.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
+iteration=20
+lamb=10000
+model.load_weights('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_MSEF2_bactchnorm_wights.h5')
+checkpointer = ModelCheckpoint('/big_disk/akrami/git_repos/lesion-detector/src/AutoEncoder/models/tp_model_200_512_merryland_30_L12_50_2_MSE_10000_without5.h5', monitor='val_loss',verbose=1, save_best_only=True, save_weights_only=False)
 for it in range(iteration):
     print ("Out iteration: " , it)
-    if it==1:
-        epochs_num=200
-    else:
-        epochs_num=20   
+    epochs_num=50   
     ## alternating project, first project to L
     L = X - S
     ## Using L to train the auto-encoder
@@ -66,5 +65,5 @@ for it in range(iteration):
     ## alternating project, now project to S and shrink S
     S = l21shrink(lamb, (X - L))
    
-
+#print_summary()
 

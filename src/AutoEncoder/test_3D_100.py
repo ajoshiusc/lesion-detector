@@ -34,7 +34,7 @@ for subj in subids:
         for k in range(0, vol_size[2] - im_size, step_size):
             out_vol[:, j:im_size + j, k:im_size +
                     k,:] += model.predict([
-                        vol_data[:, j:im_size + j, k:im_size + k,:],
+                    vol_data[:, j:im_size + j, k:im_size + k,:],
                     ]).squeeze()
             indf[:, j:im_size + j, k:im_size + k,:] += 1
     out_vol = out_vol / (indf + 1e-12)  #[...,None]
