@@ -121,8 +121,9 @@ def BBFC_loss(Y, X, beta):
     term1 = (1 / beta)
     #print(X)
     #print(Y)
-    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
-    term2 = torch.prod(term2, dim=1) - 1
+    term2 = (X * (torch.pow(Y, beta) - 1)) + (1 - X) * (torch.pow(
+        (1 - Y), beta) - 1)
+    term2 = torch.prod(term2, dim=1)
     #print(term2.shape)
     term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
     term3 = torch.prod(term3, dim=1) / (beta + 1)

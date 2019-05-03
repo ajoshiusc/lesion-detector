@@ -92,11 +92,12 @@ def BBFC_loss(Y, X, beta):
     term1 = (1 / beta)
     #print(X)
     #print(Y)
-    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
-    term2 = torch.prod(term2, dim=1) - 1
+    term2 = (X * (torch.pow(Y, beta) - 1)) + (1 - X) * (torch.pow(
+        (1 - Y), beta) - 1)
+    term2 = torch.prod(term2, dim=1)
     #print(term2.shape)
     term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
-    term3 = torch.prod(term3, dim=1)/(beta + 1)
+    term3 = torch.prod(term3, dim=1) / (beta + 1)
     loss1 = torch.sum(-term1 * term2 + term3)
     return loss1
 
@@ -105,7 +106,7 @@ def BBFC_loss(Y, X, beta):
 def beta_loss_function(recon_x, x, mu, logvar):
     #print(x.shape)
     BBCE = BBFC_loss(recon_x, x.view(-1, 784), beta)
-   # print(recon_x.max(),recon_x.min())
+    # print(recon_x.max(),recon_x.min())
     #BBCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
 
     #print(recon_x)
