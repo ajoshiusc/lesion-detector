@@ -22,7 +22,7 @@ parser.add_argument('--epochs',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda',
                     action='store_true',
-                    default=True,
+                    default=False,
                     help='enables CUDA training')
 parser.add_argument('--seed',
                     type=int,
@@ -89,14 +89,14 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
 def BBFC_loss(Y, X, beta):
-    term1 = ((beta + 1) / beta)
+    term1 = (1 / beta)
     #print(X)
     #print(Y)
     term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
-    term2 = torch.prod(term2, dim=1)
+    term2 = torch.prod(term2, dim=1) - 1
     #print(term2.shape)
     term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
-    term3 = torch.prod(term3, dim=1)
+    term3 = torch.prod(term3, dim=1)/(beta + 1)
     loss1 = torch.sum(-term1 * term2 + term3)
     return loss1
 

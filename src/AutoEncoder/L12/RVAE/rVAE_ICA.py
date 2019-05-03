@@ -60,11 +60,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
 
 X = np.load('lesion_x_train.npy')
-N=np.random.rand(1000,28,28)
-#N=np.ones((10000,28,28))
-
-#X=np.concatenate((X,N),axis=0)
-X[:1000,:,:] += N
 X_train, X_valid = train_test_split(X, test_size=0.33, random_state=10003)
 X_train = X_train.reshape((len(X_train), np.prod(X_train.shape[1:])))
 X_valid = X_valid.reshape((len(X_valid), np.prod(X_valid.shape[1:])))
@@ -129,9 +124,9 @@ def BBFC_loss(Y, X, beta):
 # Reconstruction + KL divergence losses summed over all elements and batch
 def beta_loss_function(recon_x, x, mu, logvar):
     #print(x.shape)
-    #BBCE = BBFC_loss(recon_x, x.view(-1, 784), beta)
+    BBCE = BBFC_loss(recon_x, x.view(-1, 784), beta)
    # print(recon_x.max(),recon_x.min())
-    BBCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+    #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
 
     #print(recon_x)
     #print(x)
@@ -196,7 +191,7 @@ if __name__ == "__main__":
         train(epoch)
         test(epoch)
         with torch.no_grad():
-            sample = torch.randn(64, 20).to(device)
+            sample = 10*torch.eye(20).to(device)
             sample = model.decode(sample).cpu()
-            save_image(sample.view(64, 1, 28, 28),
+            save_image(sample.view(20, 1, 28, 28),
                        'results/sample_' + str(epoch) + '.png')
