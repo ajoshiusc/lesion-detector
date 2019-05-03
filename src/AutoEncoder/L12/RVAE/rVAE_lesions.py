@@ -9,15 +9,13 @@ from torchvision.utils import save_image
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-beta = 0.005 #0.00005
+beta = 0.005  #0.00005
 #batch_size = 133
 
 seed = 10004
 epochs = 200
 batch_size = 120
 log_interval = 10
-
-
 """ parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
                     type=int,
@@ -56,19 +54,20 @@ torch.manual_seed(seed)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+kwargs = {
+    'num_workers': 1,
+    'pin_memory': True
+} if torch.cuda.is_available() else {}
 
 X = np.load('lesion_x_train.npy')
-N=np.random.rand(1000,28,28)
+N = np.random.rand(1000, 28, 28)
 #N=np.ones((10000,28,28))
 
 #X=np.concatenate((X,N),axis=0)
-X[:1000,:,:] += N
+X[:1000, :, :] += N
 X_train, X_valid = train_test_split(X, test_size=0.33, random_state=10003)
 X_train = X_train.reshape((len(X_train), np.prod(X_train.shape[1:])))
 X_valid = X_valid.reshape((len(X_valid), np.prod(X_valid.shape[1:])))
-
 
 input = torch.from_numpy(X_train).float()
 input = input.to('cuda') if torch.cuda.is_available() else input
@@ -76,8 +75,12 @@ input = input.to('cuda') if torch.cuda.is_available() else input
 validation = torch.from_numpy(X_valid).float()
 validation = input.to('cuda') if torch.cuda.is_available() else input
 
-train_loader = torch.utils.data.DataLoader(input, batch_size=batch_size, shuffle=True)
-test_loader = torch.utils.data.DataLoader(validation, batch_size=batch_size, shuffle=True)
+train_loader = torch.utils.data.DataLoader(input,
+                                           batch_size=batch_size,
+                                           shuffle=True)
+test_loader = torch.utils.data.DataLoader(validation,
+                                          batch_size=batch_size,
+                                          shuffle=True)
 
 
 class RVAE(nn.Module):
@@ -117,11 +120,12 @@ def BBFC_loss(Y, X, beta):
     term1 = (1 / beta)
     #print(X)
     #print(Y)
-    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
-    term2 = torch.prod(term2, dim=1) - 1
+    term2 = (X * (torch.pow(Y, beta) - 1)) + (1 - X) * (torch.pow(
+        (1 - Y), beta) - 1)
+    term2 = torch.prod(term2, dim=1)
     #print(term2.shape)
     term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
-    term3 = torch.prod(term3, dim=1)/(beta + 1)
+    term3 = torch.prod(term3, dim=1) / (beta + 1)
     loss1 = torch.sum(-term1 * term2 + term3)
     return loss1
 
@@ -130,7 +134,7 @@ def BBFC_loss(Y, X, beta):
 def beta_loss_function(recon_x, x, mu, logvar):
     #print(x.shape)
     #BBCE = BBFC_loss(recon_x, x.view(-1, 784), beta)
-   # print(recon_x.max(),recon_x.min())
+    # print(recon_x.max(),recon_x.min())
     BBCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
 
     #print(recon_x)
