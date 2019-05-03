@@ -121,8 +121,7 @@ def BBFC_loss(Y, X, beta):
     term1 = (1 / beta)
     #print(X)
     #print(Y)
-    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow(
-        (1 - Y), beta)
+    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
     term2 = torch.prod(term2, dim=1) - 1
     #print(term2.shape)
     term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
@@ -206,8 +205,8 @@ if __name__ == "__main__":
         test(epoch)
         with torch.no_grad():
             sample = torch.randn(64, 20).to(device)
-#            sample = .5*torch.eye(20).to(device)
+            #            sample = .5*torch.eye(20).to(device)
 
             sample = model.decode(sample).cpu()
-            save_image(sample.view(20, 1, 28, 28),
+            save_image(sample.view(64, 1, 28, 28),
                        'results/sample_' + str(epoch) + '.png')
