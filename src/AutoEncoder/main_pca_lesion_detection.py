@@ -21,20 +21,16 @@ data = read_data(
     psize=[64, 64],
     npatch_perslice=16)
 
-
-model=pca_ae([64,64,3],32);
-
-
-
-
+model = pca_ae([64, 64, 3], 32)
 
 print(data.shape)
 
-data1 = np.reshape(data,(data.shape[0], data.shape[1]*data.shape[2], data.shape[3]))
-
+data1 = np.reshape(
+    data, (data.shape[0], data.shape[1] * data.shape[2], data.shape[3]))
 
 data1.shape
-data2 = np.reshape(data1,(data.shape[0], data.shape[1],data.shape[2], data.shape[3]))
+data2 = np.reshape(
+    data1, (data.shape[0], data.shape[1], data.shape[2], data.shape[3]))
 
 print(np.linalg.norm(data - data2))
 

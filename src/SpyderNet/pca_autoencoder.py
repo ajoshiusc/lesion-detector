@@ -21,15 +21,18 @@ def pca_autoencoder_old(img_shape=[64, 64, 3], code_size=32):
 
 def pca_autoencoder(img_shape=[64, 64, 3], code_size=32):
 
+    img_shape_out = img_shape.copy()
+    img_shape_out[-1] = 1
+
     input_imgs = Input(shape=img_shape)
 
     flattened_input = Flatten()(input_imgs)
     # Encoded space
     encoded_space = Dense(code_size)(flattened_input)
     # Decoded space
-    decompressed = Dense(np.prod(img_shape))(encoded_space)
+    decompressed = Dense(np.prod(img_shape_out))(encoded_space)
     # Output units should be image_size * image_size * channels
-    output_imgs = Reshape(img_shape)(decompressed)
+    output_imgs = Reshape(img_shape_out)(decompressed)
 
     return input_imgs, output_imgs
 
