@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import VAE_models
 from sklearn.model_selection import train_test_split
 seed = 10009
-epochs = 15
+epochs = 100
 batch_size = 8
 log_interval = 10
 beta=0

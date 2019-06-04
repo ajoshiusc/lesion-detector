@@ -13,7 +13,7 @@ window_size=64
 data = read_data(
     study_dir=data_dir,
     subids=tbidoneIds,
-    nsub=5,
+    nsub=100,
     psize=[window_size, window_size],
     npatch_perslice=32)
 #np.random.shuffle(data)

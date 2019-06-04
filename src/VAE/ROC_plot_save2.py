@@ -23,7 +23,7 @@ seed = 10009
 epochs = 250
 batch_size = 8
 log_interval = 10
-beta=0.0003
+beta=0
 sigma = 0.2
 z = 32
 
@@ -90,7 +90,7 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 
 model = VAE_models.VAE_nf(z)
 model.load_state_dict(torch.load(
-    '/big_disk/akrami/git_repos/lesion-detector/src/VAE/models/model_%f_%f.pt'
+    '/big_disk/akrami/git_repos/lesion-detector/src/VAE/models/model_drop_%f_%f.pt'
     % (z, beta)),
                       strict=False)
 model.have_cuda = args.cuda
