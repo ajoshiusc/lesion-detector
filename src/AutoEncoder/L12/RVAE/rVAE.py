@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
 
-beta = 0.0001
+beta = 0.1
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -89,6 +89,18 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
 def BBFC_loss(Y, X, beta):
+   
+    #print(X)
+    #print(Y)
+    term2 = (X * (torch.pow(Y, beta)-1))/beta + (1 - X) * (torch.pow((1 - Y), beta)-1)/beta
+    term2 = torch.prod(term2, dim=1)
+    #print(term2.shape)
+    term3 = torch.pow(Y, (beta + 1))/(beta+1) + torch.pow((1 - Y), (beta + 1))/(beta+1)
+    term3 = torch.prod(term3, dim=1)
+    loss1 = torch.sum(- term2 + term3)
+    return loss1
+
+def BBFC_loss2(Y, X, beta):
     term1 = ((beta + 1) / beta)
     #print(X)
     #print(Y)
