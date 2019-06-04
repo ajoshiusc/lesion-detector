@@ -6,10 +6,19 @@ from torch import nn, optim
 from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
+import numpy as np
+from sklearn.model_selection import train_test_split
 
-beta = 0.1
+beta = 0.005 #0.00005
+#batch_size = 133
 
-parser = argparse.ArgumentParser(description='VAE MNIST Example')
+seed = 10004
+epochs = 200
+batch_size = 120
+log_interval = 10
+
+
+""" parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
                     type=int,
                     default=128,
@@ -37,27 +46,38 @@ parser.add_argument(
     help='how many batches to wait before logging training status')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
-
+ 
 torch.manual_seed(args.seed)
 
 device = torch.device("cuda" if args.cuda else "cpu")
+"""
 
-kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-train_loader = torch.utils.data.DataLoader(datasets.MNIST(
-    '../data', train=True, download=True, transform=transforms.ToTensor()),
-                                           batch_size=args.batch_size,
-                                           shuffle=True,
-                                           **kwargs)
-test_loader = torch.utils.data.DataLoader(datasets.MNIST(
-    '../data', train=False, transform=transforms.ToTensor()),
-                                          batch_size=args.batch_size,
-                                          shuffle=True,
-                                          **kwargs)
+torch.manual_seed(seed)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class VAE(nn.Module):
+kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+
+X = np.load('lesion_x_train.npy')
+X_train, X_valid = train_test_split(X, test_size=0.33, random_state=10003)
+X_train = X_train.reshape((len(X_train), np.prod(X_train.shape[1:])))
+X_valid = X_valid.reshape((len(X_valid), np.prod(X_valid.shape[1:])))
+
+
+input = torch.from_numpy(X_train).float()
+input = input.to('cuda') if torch.cuda.is_available() else input
+
+validation = torch.from_numpy(X_valid).float()
+validation = input.to('cuda') if torch.cuda.is_available() else input
+
+train_loader = torch.utils.data.DataLoader(input, batch_size=batch_size, shuffle=True)
+test_loader = torch.utils.data.DataLoader(validation, batch_size=batch_size, shuffle=True)
+
+
+class RVAE(nn.Module):
     def __init__(self):
-        super(VAE, self).__init__()
+        super(RVAE, self).__init__()
 
         self.fc1 = nn.Linear(784, 400)
         self.fc21 = nn.Linear(400, 20)
@@ -84,21 +104,19 @@ class VAE(nn.Module):
         return self.decode(z), mu, logvar
 
 
-model = VAE().to(device)
+model = RVAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
 def BBFC_loss(Y, X, beta):
-
     term1 = (1 / beta)
     #print(X)
     #print(Y)
-    term2 = (X * (torch.pow(Y, beta) - 1)) + (1 - X) * (torch.pow(
-        (1 - Y), beta) - 1)
-    term2 = torch.prod(term2, dim=1)
+    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
+    term2 = torch.prod(term2, dim=1) - 1
     #print(term2.shape)
     term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
-    term3 = torch.prod(term3, dim=1) / (beta + 1)
+    term3 = torch.prod(term3, dim=1)/(beta + 1)
     loss1 = torch.sum(-term1 * term2 + term3)
     return loss1
 
@@ -107,8 +125,8 @@ def BBFC_loss(Y, X, beta):
 def beta_loss_function(recon_x, x, mu, logvar):
     #print(x.shape)
     BBCE = BBFC_loss(recon_x, x.view(-1, 784), beta)
-    # print(recon_x.max(),recon_x.min())
-    #BBCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+   # print(recon_x.max(),recon_x.min())
+    #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
 
     #print(recon_x)
     #print(x)
@@ -124,23 +142,10 @@ def beta_loss_function(recon_x, x, mu, logvar):
     return BBCE + KLD
 
 
-# Reconstruction + KL divergence losses summed over all elements and batch
-def erereloss_function(recon_x, x, mu, logvar):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
-
-    # see Appendix B from VAE paper:
-    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-    # https://arxiv.org/abs/1312.6114
-    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-    return BCE + KLD
-
-
 def train(epoch):
     model.train()
     train_loss = 0
-    for batch_idx, (data, _) in enumerate(train_loader):
+    for batch_idx, data in enumerate(train_loader):
         data = (data.gt(0.5).type(torch.FloatTensor)).to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
@@ -148,7 +153,7 @@ def train(epoch):
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
-        if batch_idx % args.log_interval == 0:
+        if batch_idx % log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader),
@@ -162,16 +167,16 @@ def test(epoch):
     model.eval()
     test_loss = 0
     with torch.no_grad():
-        for i, (data, _) in enumerate(test_loader):
+        for i, data in enumerate(test_loader):
             data = (data.gt(0.5).type(torch.FloatTensor)).to(device)
             recon_batch, mu, logvar = model(data)
             test_loss += beta_loss_function(recon_batch, data, mu,
                                             logvar).item()
             if i == 0:
-                n = min(data.size(0), 8)
+                n = min(data.size(0), 100)
                 comparison = torch.cat([
-                    data[:n],
-                    recon_batch.view(args.batch_size, 1, 28, 28)[:n]
+                    data.view(batch_size, 1, 28, 28)[:n],
+                    recon_batch.view(batch_size, 1, 28, 28)[:n]
                 ])
                 save_image(comparison.cpu(),
                            'results/reconstruction_' + str(epoch) + '.png',
@@ -182,11 +187,11 @@ def test(epoch):
 
 
 if __name__ == "__main__":
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, epochs + 1):
         train(epoch)
         test(epoch)
         with torch.no_grad():
-            sample = torch.randn(64, 20).to(device)
+            sample = 10*torch.eye(20).to(device)
             sample = model.decode(sample).cpu()
-            save_image(sample.view(64, 1, 28, 28),
+            save_image(sample.view(20, 1, 28, 28),
                        'results/sample_' + str(epoch) + '.png')
