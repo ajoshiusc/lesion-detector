@@ -12,11 +12,11 @@ def train_save():
 
     window_H=182
     window_W=218
-    slicerange=np.arange(81, 101, dtype=int)
+    slicerange=np.arange(20, 162, dtype=int)
     data = read_data(
         study_dir=data_dir,
         subids=tbidoneIds,
-        nsub=100,
+        nsub=179,
         psize=[window_H, window_W],
         npatch_perslice=1,
         slicerange=slicerange)
@@ -25,7 +25,7 @@ def train_save():
     im = ax.imshow(data[0,:,:,0])
     plt.show()
 #np.random.shuffle(data)
-    np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_100_maryland.npz', data=data)
+    np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_179_maryland_140s.npz', data=data)
 def test_save():
     data_dir = '/big_disk/ajoshi/ISLES2015/preproc/Training/'
     #study_dir ='/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/'
@@ -50,4 +50,4 @@ def test_save():
     return()
 #np.random.shuffle(data)
 if __name__ == "__main__":
-    test_save()
+    train_save()

@@ -124,6 +124,7 @@ class VAE_nf(nn.Module):
             nn.Conv2d(64, 128, 5, 2, 2, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(True),
+            nn.Dropout(p=0.5),
             # state size. (ndf*2) x 7 x 7
             nn.Conv2d(128, 256, 5, 2, 2, bias=False),
             nn.BatchNorm2d(256),
@@ -150,6 +151,7 @@ class VAE_nf(nn.Module):
             nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
+            nn.Dropout(p=0.5),
             # state size. (ngf*4) x 8 x 8
             nn.ConvTranspose2d(256, 128, 5, 2, 2,1, bias=False),
             nn.BatchNorm2d(128 ),

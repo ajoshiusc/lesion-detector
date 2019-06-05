@@ -34,7 +34,7 @@ def MNIST_reshape():
    return()
 
 def TBI():
-   d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_100_maryland.npz')
+   d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_179_maryland.npz')
    data=d['data']
    for i in range(data.shape[0]):
       if i==0:
@@ -59,10 +59,10 @@ def ISEL():
    return X
 
 if __name__ == "__main__":
-   X_r=ISEL()
+   X_r=TBI()
    fig, ax = plt.subplots()
    im = ax.imshow(X_r[0,:,:,0])
    plt.show()
-np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_24_ISEL.npz', data=X_r)       
+np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_119_maryland_140s.npz', data=X_r)       
 
 
