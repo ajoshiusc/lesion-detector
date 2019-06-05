@@ -14,23 +14,33 @@ def train_save():
     window_H = 182
     window_W = 218
     slicerange = np.arange(81, 101, dtype=int)
+
+    dataLesion, maskLesion = read_data(study_dir=data_dir,
+                                       subids=tbidoneIds,
+                                       nsub=10,
+                                       psize=[window_H, window_W],
+                                       npatch_perslice=1,
+                                       slicerange=slicerange,
+                                       erode_sz=0)
+
     data, mask = read_data(study_dir=data_dir,
-                        subids=tbidoneIds,
-                        nsub=1,
-                        psize=[window_H, window_W],
-                        npatch_perslice=1,
-                        slicerange=slicerange,
-                        erode_sz=0)
-    #data=data[:,:,81:101]
+                           subids=tbidoneIds,
+                           nsub=100,
+                           psize=[window_H, window_W],
+                           npatch_perslice=1,
+                           slicerange=slicerange,
+                           erode_sz=0)
+
+    data[:dataLesion.shape[0], :, :, :] = dataLesion
+    mask[:dataLesion.shape[0], :, :] = maskLesion
+
     fig, ax = plt.subplots()
     im = ax.imshow(data[10, :, :, 3])
-#    im = ax.imshow(mask[0, :, :])
+    #    im = ax.imshow(mask[0, :, :])
 
     plt.show()
     #np.random.shuffle(data)
-    np.savez(
-        'data_100_maryland.npz',
-        data=data)
+    np.savez('data_100_AL_maryland.npz', data=data)
 
 
 def test_save():
@@ -52,9 +62,7 @@ def test_save():
     fig, ax = plt.subplots()
     im = ax.imshow(data[0, :, :, 0])
     plt.show()
-    np.savez(
-        '/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_24_ISEL.npz',
-        data=data)
+    np.savez('data_24_ISEL.npz', data=data)
     return ()
 
 
