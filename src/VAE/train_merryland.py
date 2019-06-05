@@ -22,8 +22,8 @@ seed = 10009
 epochs = 100
 batch_size = 8
 log_interval = 10
-beta=0
-sigma=0.2
+beta=0.0006
+sigma=1
 z=32
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
@@ -67,7 +67,7 @@ torch.manual_seed(seed)
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
 #print(y_test[1:10])
-d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_100_maryland_128.npz')
+d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_119_maryland.npz')
 X=d['data']
 max_val=np.max(X,1)
 max_val=np.max(max_val,1)
@@ -122,7 +122,7 @@ if args.cuda:
 
 print(model)
 summary(model, (3, 128, 128))
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-3)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def MSE_loss(Y, X):
@@ -174,7 +174,19 @@ def train(epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader),
                 loss.item() / len(data)))
-
+        if batch_idx == 0:
+            f_data=data[:,2,:,:]
+            f_recon_batch=recon_batch[:,2,:,:]
+            n = min(f_data.size(0), 100)
+            comparison = torch.cat([
+            f_data.view(batch_size, 1, 128, 128)[:n],
+            f_recon_batch.view(batch_size, 1, 128, 128)[:n],
+            (f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n]),
+            torch.abs(f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n])
+                ])
+            save_image(comparison.cpu(),
+                           'results/reconstruction_train_' + str(epoch) + '.png',
+                           nrow=n)
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epoch, train_loss / len(train_loader.dataset)))
 
@@ -277,7 +289,7 @@ if __name__ == "__main__":
             print("Quitting training for early stopping at epoch ", epoch)
             break
 
-    torch.save(model.state_dict(), '/big_disk/akrami/git_repos/lesion-detector/src/VAE/models/model_drop_%f_%f.pt' % (z,beta))
+    torch.save(model.state_dict(), '/big_disk/akrami/git_repos/lesion-detector/src/VAE/models/model_drop_%f_%f_%f.pt' % (z,beta,sigma))
 
     plt.plot(train_loss_list, label="train loss")
     plt.plot(valid_loss_list, label="validation loss")
