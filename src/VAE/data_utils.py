@@ -17,7 +17,7 @@ def read_data(study_dir,
               npatch_perslice,
               slicerange,
               erode_sz=1,
-              lesioned=True):
+              lesioned=False):
     # erode_sz: reads the mask and erodes it by given number of voxels
     #    dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
@@ -68,7 +68,7 @@ def read_data(study_dir,
             mskz = mskz[ind]
             #    xyz = np.unravel_index(ind, shape=t1.shape)
             centr = np.array([mskx, msky, mskz])[None, :]
-            blob, _ = make_blobs(n_samples=1000,
+            blob, _ = make_blobs(n_samples=10000,
                                  n_features=3,
                                  centers=centr,
                                  cluster_std=np.random.uniform(20, 40))
