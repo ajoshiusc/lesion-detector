@@ -21,7 +21,8 @@ def train_save():
                                        psize=[window_H, window_W],
                                        npatch_perslice=1,
                                        slicerange=slicerange,
-                                       erode_sz=0)
+                                       erode_sz=0,
+                                       lesioned=True)
 
     data, mask = read_data(study_dir=data_dir,
                            subids=tbidoneIds,
@@ -31,14 +32,18 @@ def train_save():
                            slicerange=slicerange,
                            erode_sz=0)
 
-    data[:dataLesion.shape[0], :, :, :] = dataLesion
+    data[:dataLesion.
+         shape[0], :, :, 1:3] = data[:dataLesion.shape[0], :, :, 1:
+                                     3] + dataLesion[:, :, :, 3][:, :, :, None]
+
     mask[:dataLesion.shape[0], :, :] = maskLesion
 
     fig, ax = plt.subplots()
-    im = ax.imshow(data[10, :, :, 3])
-    #    im = ax.imshow(mask[0, :, :])
+    im = ax.imshow(data[10, :, :, 2])
+    #im = ax.imshow(dataLesion[10, :, :, 3])
 
     plt.show()
+
     #np.random.shuffle(data)
     np.savez('data_100_AL_maryland.npz', data=data)
 

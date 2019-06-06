@@ -17,14 +17,14 @@ from torchsummary import summary
 import matplotlib.pyplot as plt
 from sklearn import metrics
 
-import VAE_models
+import VAE_models_functional
 from sklearn.model_selection import train_test_split
 seed = 10009
 epochs = 250
 batch_size = 8
 log_interval = 10
-beta=0
-sigma = 0.2
+beta=0.0006
+sigma = 1
 z = 32
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
@@ -87,11 +87,10 @@ validation_data = validation_data.to(
 Validation_loader = torch.utils.data.DataLoader(validation_data,
                                                 batch_size=batch_size,
                                                 shuffle=False)
-
-model = VAE_models.VAE_nf(z)
+model = VAE_models_functional.VAE_nf(z)
 model.load_state_dict(torch.load(
-    '/big_disk/akrami/git_repos/lesion-detector/src/VAE/models/model_drop_%f_%f.pt'
-    % (z, beta)),
+    '/big_disk/akrami/git_repos/lesion-detector/src/VAE/models/model_drop_%f_%f_%f.pt'
+    % (z, beta,sigma)),
                       strict=False)
 model.have_cuda = args.cuda
 
