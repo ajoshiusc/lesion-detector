@@ -15,14 +15,15 @@ import os
 from keras.datasets import mnist
 from torchsummary import summary
 import matplotlib.pyplot as plt
+from scipy import stats
 
 import VAE_models
 from sklearn.model_selection import train_test_split
 seed = 10009
-epochs = 100
+epochs =80
 batch_size = 8
 log_interval = 10
-beta=0.0006
+beta=0
 sigma=1
 z=32
 
@@ -69,15 +70,22 @@ kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 #print(y_test[1:10])
 d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_119_maryland.npz')
 X=d['data']
+#X = np.transpose(X, (0, 2, 3,1))
+
 max_val=np.max(X,1)
 max_val=np.max(max_val,1)
 max_val=np.reshape(max_val,(-1,1,1,3))
 X = X/ max_val
+#mean_val=stats.mode(X,axis=1)
+#mean_val=stats.mode(mean_val[0],axis=2)
+#mean_val=np.reshape(mean_val[0],(-1,1,1,3))
+#X = X- mean_val
 X = X.astype('float64')
+#X=np.clip(X,0,1)
 D=X.shape[1]*X.shape[2]
 
 
-X_train, X_valid = train_test_split(X, test_size=0.2, random_state=10002,shuffle=False)
+X_train, X_valid = train_test_split(X, test_size=0.1, random_state=10002,shuffle=False)
 #fig, ax = plt.subplots()
 #im = ax.imshow(X_train[0,:,:,0])
 print(np.mean(X_train[0,:,:,0]))
@@ -122,7 +130,7 @@ if args.cuda:
 
 print(model)
 summary(model, (3, 128, 128))
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def MSE_loss(Y, X):
@@ -151,7 +159,7 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
     # compute KL divergence
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BBCE + KLD
+    return BBCE +KLD
 
 
 def train(epoch):
@@ -267,7 +275,7 @@ if __name__ == "__main__":
     train_loss_list = []
     valid_loss_list = []
     best_loss = np.inf
-    patience = 50
+    patience = 100
     no_improvement = 0
     improvment=0
     delta = 0.0001

@@ -2,6 +2,7 @@ from keras.datasets import mnist
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 def MNIST_reshape():
    (X_t, _), (X_te,y_test) = mnist.load_data()
@@ -34,9 +35,9 @@ def MNIST_reshape():
    return()
 
 def TBI():
-   d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_179_maryland.npz')
+   d=np.load('data_100_AL_maryland_140.npz')
    data=d['data']
-   for i in range(data.shape[0]):
+   for i in tqdm(range(data.shape[0])):
       if i==0:
          X= cv2.resize(data[i,:,:,:], dsize=(128, 128), interpolation=cv2.INTER_CUBIC)
          X=X.reshape((1,128,128,3))
@@ -48,7 +49,7 @@ def TBI():
 def ISEL():
    d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_24_ISEL.npz')
    data=d['data']
-   for i in range(data.shape[0]):
+   for i in tqdm(range(data.shape[0])):
       if i==0:
          X= cv2.resize(data[i,:,:,:], dsize=(128, 128), interpolation=cv2.INTER_CUBIC)
          X=X.reshape((1,128,128,4))
@@ -63,6 +64,6 @@ if __name__ == "__main__":
    fig, ax = plt.subplots()
    im = ax.imshow(X_r[0,:,:,0])
    plt.show()
-np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_119_maryland_140s.npz', data=X_r)       
+np.savez('data_100_AL_maryland_140_r.npz', data=X_r)       
 
 

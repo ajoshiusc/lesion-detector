@@ -118,15 +118,15 @@ class VAE_nf(nn.Module):
 
         self.encoder = nn.Sequential(
             # input is (nc) x 28 x 28
-            nn.Conv2d(nc, 64, 5, 2, 2, bias=False),
+            nn.Conv2d(nc, 64, 5, 2, 2, bias=True),
             nn.ReLU(True),
             # state size. (ndf) x 14 x 14
-            nn.Conv2d(64, 128, 5, 2, 2, bias=False),
+            nn.Conv2d(64, 128, 5, 2, 2, bias=True),
             nn.BatchNorm2d(128),
             nn.ReLU(True),
             nn.Dropout(p=0.5),
             # state size. (ndf*2) x 7 x 7
-            nn.Conv2d(128, 256, 5, 2, 2, bias=False),
+            nn.Conv2d(128, 256, 5, 2, 2, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.Dropout(p=0.5)
@@ -139,7 +139,7 @@ class VAE_nf(nn.Module):
 
         self.decoder = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(self.nz, 256, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(self.nz, 256, 5, 2, 2,1, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.Dropout(p=0.5),
@@ -148,18 +148,18 @@ class VAE_nf(nn.Module):
             #nn.BatchNorm2d(256),
             #nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.Dropout(p=0.5),
             # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(256, 128, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(256, 128, 5, 2, 2,1, bias=True),
             nn.BatchNorm2d(128 ),
             nn.ReLU(True),
-            nn.ConvTranspose2d(128, 32, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(128, 32, 5, 2, 2,1, bias=True),
             nn.BatchNorm2d(32),
             nn.ReLU(True),
-            nn.Conv2d(32, nc, 5, 1, 2, bias=False),
+            nn.Conv2d(32, nc, 5, 1, 2, bias=True),
             nn.Sigmoid()
             # state size. (ngf*2) x 16 x 16
             

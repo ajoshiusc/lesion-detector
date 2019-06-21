@@ -8,9 +8,15 @@ def main():
     """ Main script that calls the functions objects"""
     data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot'
 
+    tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/tracktbi_done.txt'
+    with open(tbi_done_list) as f:
+        tbidoneIds = f.readlines()
+
+    # Get the list of subjects that are correctly registered
+    tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
     # Read data
     data = read_data(
-        study_dir=data_dir, nsub=5, psize=[128, 128], npatch_perslice=32)
+        study_dir=data_dir, nsub=50, psize=[128, 128], npatch_perslice=32)
 
     # Train the model
     train_data = data  #[0:-5, :, :, :]
