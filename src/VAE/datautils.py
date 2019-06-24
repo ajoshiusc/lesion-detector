@@ -65,11 +65,10 @@ def read_data(study_dir,
             mskz = mskz[ind]
             #    xyz = np.unravel_index(ind, shape=t1.shape)
             centr = np.array([mskx, msky, mskz])[:, None]
-            blob, _ = make_blobs(
-                n_samples=10,
-                n_features=3,
-                centers=centr,
-                cluster_std=random.uniform(0, 30))
+            blob, _ = make_blobs(n_samples=10,
+                                 n_features=3,
+                                 centers=centr,
+                                 cluster_std=random.uniform(0, 30))
 
             blob = np.int16(
                 np.clip(np.round(blob), [0, 0, 0],
@@ -87,14 +86,13 @@ def read_data(study_dir,
         # preallocate
         if subno == 1:
             num_slices = imgs.shape[2]
-            patch_data = np.zeros((nsub * npatch_perslice * num_slices, psize[0],
-                                   psize[1], imgs.shape[-1]))
+            patch_data = np.zeros((nsub * npatch_perslice * num_slices,
+                                   psize[0], psize[1], imgs.shape[-1]))
 
         for sliceno in tqdm(range(num_slices)):
-            ptch = extract_patches_2d(
-                image=imgs[:, :, sliceno, :],
-                patch_size=psize,
-                max_patches=npatch_perslice)
+            ptch = extract_patches_2d(image=imgs[:, :, sliceno, :],
+                                      patch_size=psize,
+                                      max_patches=npatch_perslice)
 
             strt_ind = (
                 subno -
@@ -110,7 +108,7 @@ def read_data(study_dir,
     return patch_data, mask_data  # npatch x width x height x channels
 
 
-def slice2vol_pred(model_pred, vol_data, mask_data, im_size, step_size=1):
+def slice2vol_pred(model_pred, vol_data, im_size, step_size=1):
     # model_pred: predictor that gives 2d images as outputs
     # vol_data this is 3d images + 4th dim for different modalities
     # im_size number with size of images (for 64x64 images) it is 64
@@ -123,10 +121,12 @@ def slice2vol_pred(model_pred, vol_data, mask_data, im_size, step_size=1):
     print('Putting together slices to form volume')
     for j in tqdm(range(0, vol_size[1] - im_size, step_size)):
         for k in range(0, vol_size[2] - im_size, step_size):
-            out_vol[:, j:im_size + j, k:im_size + k, :] += model_pred([
-                vol_data[:, j:im_size + j, k:im_size + k],
-                mask_data[:, j:im_size + j, k:im_size + k, None]
-            ])
+
+            dat = np.transpose(vol_data[:, j:im_size + j, k:im_size + k, :],
+                               (0, 3, 1, 2))
+            out1, _, _ = model_pred(dat)
+            out_vol[:, j:im_size + j, k:im_size + k, :] += np.transpose(
+                out1.detach().numpy(), (0, 2, 3, 1))
             #                        [
             #                        vol_data[:, j:im_size + j, k:im_size + k, 0, None],
             #                        vol_data[:, j:im_size + j, k:im_size + k, 1, None],

@@ -96,8 +96,10 @@ flair = np.float32(flair) / pflair
 
 dat = np.stack((t1, t2, flair), axis=3)
 
+dat = torch.from_numpy(dat).float()
+
 #build_pca_autoencoder(model1, td, [64, 64, 3], step_size=1)
-out_vol = slice2vol_pred(model1, dat, t1msk, 64, step_size=10)
+out_vol = slice2vol_pred(model1, dat, 64, step_size=10)
 #%%
 t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0] * pt1)
 t1.to_filename('TBI_INVYM889KY4_rec_t1.nii.gz')
@@ -111,11 +113,11 @@ t2.to_filename('TBI_INVYM889KY4_rec_t2.nii.gz')
 flair = ni.new_img_like(t1o, out_vol[:, :, :, 2] * pflair)
 flair.to_filename('TBI_INVYM889KY4_rec_flair.nii.gz')
 
-err = ni.new_img_like(t1o, np.mean((out_vol - dat)**2, axis=3))
+err = ni.new_img_like(t1o, np.mean((out_vol - dat.numpy())**2, axis=3))
 err.to_filename('TBI_INVYM889KY4_rec_err.nii.gz')
 
 err = ni.new_img_like(
-    t1o, np.mean((out_vol[..., 2, None] - dat[..., 2, None])**2, axis=3))
+    t1o, np.mean((out_vol[..., 2, None] - dat.numpy()[..., 2, None])**2, axis=3))
 err.to_filename('TBI_INVYM889KY4_rec_flair_err.nii.gz')
 
 np.savez('lesion_det.npz', out_vol=out_vol, dat=dat)
