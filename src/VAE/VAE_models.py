@@ -6,17 +6,67 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from torchvision import datasets, transforms
-
+import numpy as np
 import os
 import random
 import torch.utils.data
 import torchvision.utils as vutils
 import torch.backends.cudnn as cudnn
+from torchvision.utils import save_image
 
 
+IM_SZ=64
 ngf = 64
 ndf = 64
 nc = 3
+SIGMA = 1.0
+
+
+def MSE_loss(Y, X):
+    ret = (X - Y)**2
+    ret = torch.sum(ret, 1)
+    return ret
+
+
+def Gaussian_CE_loss(Y, X, beta, sigma=SIGMA):  # 784 for mnist
+    D = Y.shape[1]
+    term1 = -((1 + beta) / beta)
+    K1 = 1 / pow((2 * math.pi * (sigma**2)), (beta * D / 2))
+    term2 = MSE_loss(Y, X)
+    term3 = torch.exp(-(beta / (2 * (sigma**2))) * term2)
+    loss1 = torch.sum(term1 * (K1 * term3 - 1))
+    return loss1
+
+
+def Bernoulli_CE_loss(Y, X, beta):
+    term1 = (1 / beta)
+    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
+    term2 = torch.prod(term2, dim=1) - 1
+    term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
+    term3 = torch.prod(term3, dim=1) / (beta + 1)
+    loss1 = torch.sum((-term1 * term2 + term3) * (beta + 1))
+    if torch.isnan(loss1):
+        print(loss1)
+    return loss1
+
+
+# Reconstruction + KL divergence losses summed over all elements and batch
+def bdiv_elbo(recon_x, x, mu, logvar, beta):
+
+    if beta > 0:
+        # If beta is nonzero, use the beta entropy
+        #BBCE = Bernoulli_CE_loss(recon_x, x, beta)
+        BBCE = Gaussian_CE_loss(recon_x, x, beta)
+    else:
+        # if beta is zero use binary cross entropy
+        #BBCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
+        BBCE = torch.sum(MSE_loss(recon_x, x))
+
+    # compute KL divergence
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    return BBCE + KLD
+
 
 class VAE(nn.Module):
     def __init__(self, nz):
@@ -30,46 +80,41 @@ class VAE(nn.Module):
             nn.Conv2d(nc, 64, 5, 2, 2, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf) x 14 x 14
-            nn.Conv2d(64, 128, 5, 2, 2, bias=False),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(64, IM_SZ, 5, 2, 2, bias=False),
+            nn.BatchNorm2d(IM_SZ),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*2) x 7 x 7
-            nn.Conv2d(128, 256, 5, 2, 2, bias=False),
+            nn.Conv2d(IM_SZ, 256, 5, 2, 2, bias=False),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*4) x 4 x 4
-            
         )
 
         self.decoder = nn.Sequential(
             # input is Z, going into a convolution
 
             # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(256, 256, 5, 2, 2, 1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(256, 128, 5, 2, 2,1, bias=False),
-            nn.BatchNorm2d(128 ),
+            nn.ConvTranspose2d(256, IM_SZ, 5, 2, 2, 1, bias=False),
+            nn.BatchNorm2d(IM_SZ),
             nn.ReLU(True),
-            nn.ConvTranspose2d(128, 32, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(IM_SZ, 32, 5, 2, 2, 1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(True),
             nn.Conv2d(32, nc, 5, 1, 2, bias=False),
             nn.Sigmoid()
             # state size. (ngf*2) x 16 x 16
-            
-            
-            
         )
 
-        self.fc1 = nn.Linear(256*4*4, 512)
+        self.fc1 = nn.Linear(256 * 4 * 4, 512)
         self.fc21 = nn.Linear(512, nz)
         self.fc22 = nn.Linear(512, nz)
 
         self.fc3 = nn.Linear(nz, 512)
-        self.fc4 = nn.Linear(512, 256*4*4)
-        
+        self.fc4 = nn.Linear(512, 256 * 4 * 4)
 
         self.lrelu = nn.LeakyReLU()
         self.relu = nn.ReLU()
@@ -78,7 +123,7 @@ class VAE(nn.Module):
     def encode(self, x):
         conv = self.encoder(x)
         # print("encode conv", conv.size())
-        h1 = self.fc1(conv.view(-1, 256*4*4))
+        h1 = self.fc1(conv.view(-1, 256 * 4 * 4))
         # print("encode h1", h1.size())
         return self.fc21(h1), self.fc22(h1)
 
@@ -86,7 +131,7 @@ class VAE(nn.Module):
         h3 = self.relu(self.fc3(z))
         deconv_input = self.fc4(h3)
         # print("deconv_input", deconv_input.size())
-        deconv_input = deconv_input.view(-1,256,4,4)
+        deconv_input = deconv_input.view(-1, 256, 4, 4)
         # print("deconv_input", deconv_input.size())
         return self.decoder(deconv_input)
 
@@ -109,6 +154,7 @@ class VAE(nn.Module):
         # print("decoded", decoded.size())
         return decoded, mu, logvar
 
+
 class VAE_nf(nn.Module):
     def __init__(self, nz):
         super(VAE_nf, self).__init__()
@@ -121,12 +167,12 @@ class VAE_nf(nn.Module):
             nn.Conv2d(nc, 64, 5, 2, 2, bias=True),
             nn.ReLU(True),
             # state size. (ndf) x 14 x 14
-            nn.Conv2d(64, 128, 5, 2, 2, bias=True),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(64, IM_SZ, 5, 2, 2, bias=True),
+            nn.BatchNorm2d(IM_SZ),
             nn.ReLU(True),
             nn.Dropout(p=0.5),
             # state size. (ndf*2) x 7 x 7
-            nn.Conv2d(128, 256, 5, 2, 2, bias=True),
+            nn.Conv2d(IM_SZ, 256, 5, 2, 2, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.Dropout(p=0.5)
@@ -134,12 +180,11 @@ class VAE_nf(nn.Module):
             #nn.Conv2d(256, 256, 5, 2, 2, bias=False),
             #nn.BatchNorm2d(256),
             #nn.ReLU(True),
-            
         )
 
         self.decoder = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(self.nz, 256, 5, 2, 2,1, bias=True),
+            nn.ConvTranspose2d(self.nz, 256, 5, 2, 2, 1, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.Dropout(p=0.5),
@@ -148,32 +193,24 @@ class VAE_nf(nn.Module):
             #nn.BatchNorm2d(256),
             #nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=True),
+            nn.ConvTranspose2d(256, 256, 5, 2, 2, 1, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.Dropout(p=0.5),
             # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(256, 128, 5, 2, 2,1, bias=True),
-            nn.BatchNorm2d(128 ),
+            nn.ConvTranspose2d(256, IM_SZ, 5, 2, 2, 1, bias=True),
+            nn.BatchNorm2d(IM_SZ),
             nn.ReLU(True),
-            nn.ConvTranspose2d(128, 32, 5, 2, 2,1, bias=True),
+            nn.ConvTranspose2d(IM_SZ, 32, 5, 2, 2, 1, bias=True),
             nn.BatchNorm2d(32),
             nn.ReLU(True),
             nn.Conv2d(32, nc, 5, 1, 2, bias=True),
             nn.Sigmoid()
             # state size. (ngf*2) x 16 x 16
-            
-            
-            
         )
 
-        
         self.cv12 = nn.Conv2d(256, self.nz, 5, 2, 2, bias=False)
         self.cv22 = nn.Conv2d(256, self.nz, 5, 2, 2, bias=False)
-
-    
-
-        
 
         self.lrelu = nn.LeakyReLU()
         self.relu = nn.ReLU()
@@ -207,6 +244,7 @@ class VAE_nf(nn.Module):
         # print("decoded", decoded.size())
         return decoded, mu, logvar
 
+
 class AE_nf(nn.Module):
     def __init__(self, nz):
         super(AE_nf, self).__init__()
@@ -219,11 +257,11 @@ class AE_nf(nn.Module):
             nn.Conv2d(nc, 64, 5, 2, 2, bias=False),
             nn.ReLU(True),
             # state size. (ndf) x 14 x 14
-            nn.Conv2d(64, 128, 5, 2, 2, bias=False),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(64, IM_SZ, 5, 2, 2, bias=False),
+            nn.BatchNorm2d(IM_SZ),
             nn.ReLU(True),
             # state size. (ndf*2) x 7 x 7
-            nn.Conv2d(128, 256, 5, 2, 2, bias=False),
+            nn.Conv2d(IM_SZ, 256, 5, 2, 2, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             # state size. (ndf*4) x 4 x 4
@@ -234,38 +272,30 @@ class AE_nf(nn.Module):
 
         self.decoder = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(self.nz, 256, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(self.nz, 256, 5, 2, 2, 1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(256, 256, 5, 2, 2, 1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
-            nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(256, 256, 5, 2, 2, 1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(256, 128, 5, 2, 2,1, bias=False),
-            nn.BatchNorm2d(128 ),
+            nn.ConvTranspose2d(256, IM_SZ, 5, 2, 2, 1, bias=False),
+            nn.BatchNorm2d(IM_SZ),
             nn.ReLU(True),
-            nn.ConvTranspose2d(128, 32, 5, 2, 2,1, bias=False),
+            nn.ConvTranspose2d(IM_SZ, 32, 5, 2, 2, 1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(True),
             nn.Conv2d(32, nc, 5, 1, 2, bias=False),
             nn.Sigmoid()
             # state size. (ngf*2) x 16 x 16
-            
-            
-            
         )
 
-        
         self.cv12 = nn.Conv2d(256, self.nz, 5, 2, 2, bias=False)
         #self.cv22 = nn.Conv2d(256, self.nz, 5, 2, 2, bias=False)
-
-    
-
-        
 
         self.lrelu = nn.LeakyReLU()
         self.relu = nn.ReLU()
@@ -294,3 +324,71 @@ class AE_nf(nn.Module):
         decoded = self.decode(z)
         # print("decoded", decoded.size())
         return decoded, z
+
+
+def train(model, data, device='cuda', epochs=10, batch_size=32):
+
+
+    model.train()
+    #data = (data).to(device)
+
+    train_loader = torch.utils.data.DataLoader(data,
+                                               batch_size=batch_size,
+                                               shuffle=True)
+
+    for epoch in range(1, epochs + 1):
+        train_epoch(model,
+                    train_loader,
+                    device=device,
+                    epoch=epoch,
+                    batch_size=batch_size)
+
+
+def train_epoch(model,
+                train_loader,
+                epoch=0,
+                device='cuda',                
+                batch_size=32,
+                log_interval=10):
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    train_loss = 0
+    for batch_idx, data in enumerate(train_loader):
+        #data = (data.gt(0.5).type(torch.FloatTensor)).to(device)
+
+        optimizer.zero_grad()
+        recon_batch, mu, logvar = model(data)
+        loss = bdiv_elbo(
+            recon_batch, data, mu, logvar,
+            beta=0)  # beta_loss_function(recon_batch, data, mu, logvar, beta)
+        loss.backward()
+        if torch.isnan(loss):
+            print(loss)
+        train_loss += loss.item()
+        optimizer.step()
+        if batch_idx % log_interval == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader),
+                loss.item() / len(data)))
+        if batch_idx == 0:
+            f_data = data[:, 2, :, :]
+            f_recon_batch = recon_batch[:, 2, :, :]
+            n = min(f_data.size(0), 100)
+            comparison = torch.cat([
+                f_data.view(batch_size, 1, IM_SZ, IM_SZ)[:n],
+                f_recon_batch.view(batch_size, 1, IM_SZ, IM_SZ)[:n],
+                (f_data.view(batch_size, 1, IM_SZ, IM_SZ)[:n] -
+                 f_recon_batch.view(batch_size, 1, IM_SZ, IM_SZ)[:n]),
+                torch.abs(
+                    f_data.view(batch_size, 1, IM_SZ, IM_SZ)[:n] -
+                    f_recon_batch.view(batch_size, 1, IM_SZ, IM_SZ)[:n])
+            ])
+            save_image(comparison.cpu(),
+                       'results/reconstruction_train_' + str(epoch) + '.png',
+                       nrow=n)
+    print('====> Epoch: {} Average loss: {:.4f}'.format(
+        epoch, train_loss / len(train_loader.dataset)))
+
+    return (train_loss / len(train_loader.dataset))

@@ -4,15 +4,19 @@
 
 # In[1]:
 from datautils import read_data, slice2vol_pred, binary_erosion
-from pca_autoencoder import pca_autoencoder_masked as pca_ae_msk
+#from pca_autoencoder import pca_autoencoder_masked as pca_ae_msk
 import keras, keras.layers as L
 from keras.models import load_model
 import numpy as np
 from keras.losses import mse
 import nilearn.image as ni
+from VAE_models import train, VAE_nf
+from sklearn.model_selection import train_test_split
+import torch
 
 ERODE_SZ = 1
-DO_TRAINING = 0
+DO_TRAINING = 1
+CODE_SZ = 32
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1'
 tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt'
@@ -24,30 +28,40 @@ with open(tbi_done_list) as f:
 tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
 
 if DO_TRAINING:
-    model1 = pca_ae_msk(64, 2 * 2 * 512)
+    model1 = VAE_nf(CODE_SZ)
 
-    data, mask_data = read_data(
-        study_dir=data_dir,
-        subids=tbidoneIds,
-        nsub=30,
-        psize=[64, 64],
-        npatch_perslice=32,
-        erode_sz=ERODE_SZ)
+    #    pca_ae_msk(64, 2 * 2 * 512)
 
-    model1.fit(
-        x=[data, mask_data[..., None]],
-        y=data * mask_data[..., None],
-        shuffle=False,
-        validation_split=.2,
-        batch_size=128,
-        epochs=200)
+    data, mask_data = read_data(study_dir=data_dir,
+                                subids=tbidoneIds,
+                                nsub=1,
+                                psize=[64, 64],
+                                npatch_perslice=32,
+                                erode_sz=ERODE_SZ)
 
-    data2 = model1.predict([data, mask_data[..., None]])
-    print(np.mean((data2.flatten() - data.flatten())**2))
+    #    X_train, X_valid = train_test_split(data, test_size=0.1, random_state=10002,shuffle=False)
 
-    model1.save('maryland_rao_v1_pca_autoencoder.h5')
+    data = torch.from_numpy(data).float()
+    data = np.transpose(data[:, :, :, :3], (0, 3, 1, 2))
 
-model1 = load_model('maryland_rao_v1_pca_autoencoder.h5')
+    model1.to('cuda')
+    data=(data).to('cuda')
+    model1.have_cuda = True
+
+    train(model1, data, device='cuda', epochs=1, batch_size=32)
+
+    model1.to('cpu')
+    data=(data).to('cpu')
+    model1.have_cuda = False
+
+    data2,_,_ = model1(data)
+    data=data.numpy()
+    data2=data2.detach().numpy()
+    print(np.sum((data2.flatten() - data.flatten())**2))
+
+#    model1.save('maryland_rao_v1_pca_autoencoder.h5')
+
+#model1 = load_model('maryland_rao_v1_pca_autoencoder.h5')
 
 t1 = ni.load_img(
     '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVYM889KY4/T1mni.nii.gz'
@@ -83,7 +97,7 @@ flair = np.float32(flair) / pflair
 dat = np.stack((t1, t2, flair), axis=3)
 
 #build_pca_autoencoder(model1, td, [64, 64, 3], step_size=1)
-out_vol = slice2vol_pred(model1.predict, dat, t1msk, 64, step_size=10)
+out_vol = slice2vol_pred(model1, dat, t1msk, 64, step_size=10)
 #%%
 t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0] * pt1)
 t1.to_filename('TBI_INVYM889KY4_rec_t1.nii.gz')

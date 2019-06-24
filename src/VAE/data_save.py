@@ -13,7 +13,7 @@ def train_save():
 
     window_H = 182
     window_W = 218
-    slicerange = np.arange(81, 101, dtype=int)
+    slicerange = np.arange(21, 161, dtype=int)
 
     dataLesion, maskLesion = read_data(study_dir=data_dir,
                                        subids=tbidoneIds,
@@ -45,7 +45,7 @@ def train_save():
     plt.show()
 
     #np.random.shuffle(data)
-    np.savez('data_100_AL_maryland.npz', data=data)
+    np.savez('data_100_AL_maryland_140.npz', data=data)
 
 
 def test_save():
