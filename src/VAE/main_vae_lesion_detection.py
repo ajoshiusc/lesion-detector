@@ -14,8 +14,8 @@ from VAE_models import train, VAE_nf
 from sklearn.model_selection import train_test_split
 import torch
 
-ERODE_SZ = 1
-DO_TRAINING = 1
+ERODE_SZ = 0
+DO_TRAINING = 0
 CODE_SZ = 32
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1'
@@ -34,9 +34,9 @@ if DO_TRAINING:
 
     data, mask_data = read_data(study_dir=data_dir,
                                 subids=tbidoneIds,
-                                nsub=1,
+                                nsub=32,
                                 psize=[64, 64],
-                                npatch_perslice=32,
+                                npatch_perslice=4,
                                 erode_sz=ERODE_SZ)
 
     #    X_train, X_valid = train_test_split(data, test_size=0.1, random_state=10002,shuffle=False)
@@ -48,9 +48,12 @@ if DO_TRAINING:
     data=(data).to('cuda')
     model1.have_cuda = True
 
-    train(model1, data, device='cuda', epochs=1, batch_size=32)
+    train(model1, data, device='cuda', epochs=50, batch_size=64)
+    torch.save(model1,'maryland_rao_v1_pca_autoencoder.pth')
+else:
+    model1 = torch.load('maryland_rao_v1_pca_autoencoder.pth')
 
-    model1.to('cpu')
+"""     model1.to('cpu')
     data=(data).to('cpu')
     model1.have_cuda = False
 
@@ -58,7 +61,7 @@ if DO_TRAINING:
     data=data.numpy()
     data2=data2.detach().numpy()
     print(np.sum((data2.flatten() - data.flatten())**2))
-
+ """
 #    model1.save('maryland_rao_v1_pca_autoencoder.h5')
 
 #model1 = load_model('maryland_rao_v1_pca_autoencoder.h5')
@@ -99,6 +102,8 @@ dat = np.stack((t1, t2, flair), axis=3)
 dat = torch.from_numpy(dat).float()
 
 #build_pca_autoencoder(model1, td, [64, 64, 3], step_size=1)
+model1.have_cuda = False
+model1.to('cpu')
 out_vol = slice2vol_pred(model1, dat, 64, step_size=10)
 #%%
 t1 = ni.new_img_like(t1o, out_vol[:, :, :, 0] * pt1)

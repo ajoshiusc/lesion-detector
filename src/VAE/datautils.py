@@ -8,7 +8,7 @@ from scipy.ndimage.morphology import binary_erosion
 import random
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
-
+import torch
 
 def read_data(study_dir,
               subids,
