@@ -396,7 +396,7 @@ def train_epoch(model,
                 batch_size=32,
                 log_interval=10):
 
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
