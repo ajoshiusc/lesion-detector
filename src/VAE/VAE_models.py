@@ -23,7 +23,7 @@ SIGMA = 1.0
 
 
 def MSE_loss(Y, X):
-    ret = (X - Y)**2
+    ret = torch.abs(X - Y)
     ret = torch.sum(ret, 1)
     return ret
 
