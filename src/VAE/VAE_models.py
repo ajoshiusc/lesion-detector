@@ -13,13 +13,14 @@ import torch.utils.data
 import torchvision.utils as vutils
 import torch.backends.cudnn as cudnn
 from torchvision.utils import save_image
+from sklearn.model_selection import train_test_split
 
-
-IM_SZ=64
+IM_SZ = 64
 ngf = 64
 ndf = 64
 nc = 3
 SIGMA = 1.0
+BETA = 0
 
 
 def MSE_loss(Y, X):
@@ -170,12 +171,12 @@ class VAE_nf(nn.Module):
             nn.Conv2d(64, IM_SZ, 5, 2, 2, bias=True),
             nn.BatchNorm2d(IM_SZ),
             nn.ReLU(True),
-            nn.Dropout(p=0.5),
+            #  nn.Dropout(p=0.5),
             # state size. (ndf*2) x 7 x 7
             nn.Conv2d(IM_SZ, 256, 5, 2, 2, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
-            nn.Dropout(p=0.5)
+            # nn.Dropout(p=0.5)
             # state size. (ndf*4) x 4 x 4
             #nn.Conv2d(256, 256, 5, 2, 2, bias=False),
             #nn.BatchNorm2d(256),
@@ -187,7 +188,7 @@ class VAE_nf(nn.Module):
             nn.ConvTranspose2d(self.nz, 256, 5, 2, 2, 1, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
-            nn.Dropout(p=0.5),
+            #   nn.Dropout(p=0.5),
             # state size. (ngf*8) x 4 x 4
             #nn.ConvTranspose2d(256, 256, 5, 2, 2,1, bias=False),
             #nn.BatchNorm2d(256),
@@ -196,7 +197,7 @@ class VAE_nf(nn.Module):
             nn.ConvTranspose2d(256, 256, 5, 2, 2, 1, bias=True),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
-            nn.Dropout(p=0.5),
+            #   nn.Dropout(p=0.5),
             # state size. (ngf*4) x 8 x 8
             nn.ConvTranspose2d(256, IM_SZ, 5, 2, 2, 1, bias=True),
             nn.BatchNorm2d(IM_SZ),
@@ -326,28 +327,66 @@ class AE_nf(nn.Module):
         return decoded, z
 
 
-def train(model, data, device='cuda', epochs=10, batch_size=32):
-
+def train(model, data, device='cuda', epochs=10, batch_size=32, patience=100):
+    best_loss = np.inf
+    no_improvement = 0
 
     model.train()
     #data = (data).to(device)
 
-    train_loader = torch.utils.data.DataLoader(data,
+    X_train, X_valid = train_test_split(data,
+                                        test_size=0.1,
+                                        random_state=10002,
+                                        shuffle=False)
+
+    X_train = torch.from_numpy(X_train).float()
+    X_valid = torch.from_numpy(X_valid).float()
+    X_train = (X_train).to(device)
+    X_valid = (X_valid).to(device)
+
+    train_loader = torch.utils.data.DataLoader(X_train,
+                                               batch_size=batch_size,
+                                               shuffle=True)
+    valid_loader = torch.utils.data.DataLoader(X_valid,
                                                batch_size=batch_size,
                                                shuffle=True)
 
+    train_loss_list = []
+    valid_loss_list = []
+
     for epoch in range(1, epochs + 1):
-        train_epoch(model,
-                    train_loader,
-                    device=device,
-                    epoch=epoch,
-                    batch_size=batch_size)
+        train_loss = train_epoch(model,
+                                 train_loader,
+                                 device=device,
+                                 epoch=epoch,
+                                 batch_size=batch_size)
+
+        logvar_all, mu_all, validation_loss = valid_epoch(
+            model,
+            valid_loader,
+            device=device,
+            epoch=epoch,
+            batch_size=batch_size)
+
+        train_loss_list.append(train_loss)
+        valid_loss_list.append(validation_loss)
+
+        if validation_loss > best_loss:
+            no_improvement += 1
+        else:
+            no_improvement = 0
+
+        best_loss = min(best_loss, validation_loss)
+
+        if no_improvement == patience:
+            print("Quitting training for early stopping at epoch ", epoch)
+            break
 
 
 def train_epoch(model,
                 train_loader,
                 epoch=0,
-                device='cuda',                
+                device='cuda',
                 batch_size=32,
                 log_interval=10):
 
@@ -360,8 +399,8 @@ def train_epoch(model,
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
         loss = bdiv_elbo(
-            recon_batch, data, mu, logvar,
-            beta=0)  # beta_loss_function(recon_batch, data, mu, logvar, beta)
+            recon_batch, data, mu, logvar, beta=BETA
+        )  # beta_loss_function(recon_batch, data, mu, logvar, beta)
         loss.backward()
         if torch.isnan(loss):
             print(loss)
@@ -392,3 +431,46 @@ def train_epoch(model,
         epoch, train_loss / len(train_loader.dataset)))
 
     return (train_loss / len(train_loader.dataset))
+
+
+def valid_epoch(model,
+                valid_loader,
+                epoch=0,
+                device='cuda',
+                batch_size=32,
+                log_interval=10):
+    model.eval()
+    test_loss = 0
+    with torch.no_grad():
+        for i, data in enumerate(valid_loader):
+            #        data = (data.gt(0.5).type(torch.FloatTensor)).to(device)
+            data = (data).to(device)
+
+            recon_batch, mu, logvar = model(data)
+            #print(mu.shape)
+            test_loss += bdiv_elbo(recon_batch, data, mu, logvar,
+                                   beta=BETA).item()
+            if i == 0:
+                f_data = data[:, 2, :, :]
+                f_recon_batch = recon_batch[:, 2, :, :]
+                n = min(f_data.size(0), 100)
+                comparison = torch.cat([
+                    f_data.view(batch_size, 1, IM_SZ, IM_SZ)[:n],
+                    f_recon_batch.view(batch_size, 1, IM_SZ, IM_SZ)[:n],
+                    (f_data.view(batch_size, 1, IM_SZ, IM_SZ)[:n] -
+                     f_recon_batch.view(batch_size, 1, IM_SZ, IM_SZ)[:n]),
+                    torch.abs(
+                        f_data.view(batch_size, 1, IM_SZ, IM_SZ)[:n] -
+                        f_recon_batch.view(batch_size, 1, IM_SZ, IM_SZ)[:n])
+                ])
+                save_image(comparison.cpu(),
+                           'results/reconstruction_' + str(epoch) + '.png',
+                           nrow=n)
+                mu_all = mu
+                logvar_all = logvar
+            else:
+                mu_all = torch.cat([mu_all, mu])
+                logvar_all = torch.cat([logvar_all, logvar])
+    test_loss /= len(valid_loader.dataset)
+    print('====> Test set loss: {:.4f}'.format(test_loss))
+    return logvar_all, mu_all, test_loss

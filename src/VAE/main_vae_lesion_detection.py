@@ -14,7 +14,7 @@ from VAE_models import train, VAE_nf
 from sklearn.model_selection import train_test_split
 import torch
 
-IM_SZ=64
+IM_SZ = 64
 ERODE_SZ = 0
 DO_TRAINING = 1
 CODE_SZ = 32
@@ -42,18 +42,17 @@ if DO_TRAINING:
 
     #    X_train, X_valid = train_test_split(data, test_size=0.1, random_state=10002,shuffle=False)
 
-    data = torch.from_numpy(data).float()
+   # data = torch.from_numpy(data).float()
     data = np.transpose(data[:, :, :, :3], (0, 3, 1, 2))
 
     model1.to('cuda')
-    data=(data).to('cuda')
+#    data = (data).to('cuda')
     model1.have_cuda = True
 
-    train(model1, data, device='cuda', epochs=50, batch_size=64)
-    torch.save(model1,'maryland_rao_v1_pca_autoencoder_l1.pth')
+    train(model1, data, device='cuda', epochs=200, batch_size=64)
+    torch.save(model1, 'maryland_rao_v1_pca_autoencoder2.pth')
 else:
-    model1 = torch.load('maryland_rao_v1_pca_autoencoder_l1.pth')
-
+    model1 = torch.load('maryland_rao_v1_pca_autoencoder2.pth')
 """     model1.to('cpu')
     data=(data).to('cpu')
     model1.have_cuda = False
@@ -123,7 +122,8 @@ err = ni.new_img_like(t1o, np.mean((out_vol - dat.numpy())**2, axis=3))
 err.to_filename('TBI_INVYM889KY4_rec_err.nii.gz')
 
 err = ni.new_img_like(
-    t1o, np.mean((out_vol[..., 2, None] - dat.numpy()[..., 2, None])**2, axis=3))
+    t1o, np.mean((out_vol[..., 2, None] - dat.numpy()[..., 2, None])**2,
+                 axis=3))
 err.to_filename('TBI_INVYM889KY4_rec_flair_err.nii.gz')
 
 np.savez('lesion_det.npz', out_vol=out_vol, dat=dat)
