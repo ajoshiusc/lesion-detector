@@ -50,9 +50,9 @@ if DO_TRAINING:
     model1.have_cuda = True
 
     train(model1, data, device='cuda', epochs=200, batch_size=64)
-    torch.save(model1, 'maryland_rao_v1_pca_autoencoder2.pth')
+    torch.save(model1, 'maryland_rao_v1_pca_autoencoder2rmsprop.pth')
 else:
-    model1 = torch.load('maryland_rao_v1_pca_autoencoder2.pth')
+    model1 = torch.load('maryland_rao_v1_pca_autoencoder2rmsprop.pth')
 """     model1.to('cpu')
     data=(data).to('cpu')
     model1.have_cuda = False

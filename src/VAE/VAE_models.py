@@ -14,6 +14,7 @@ import torchvision.utils as vutils
 import torch.backends.cudnn as cudnn
 from torchvision.utils import save_image
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 IM_SZ = 64
 ngf = 64
@@ -381,6 +382,11 @@ def train(model, data, device='cuda', epochs=10, batch_size=32, patience=100):
         if no_improvement == patience:
             print("Quitting training for early stopping at epoch ", epoch)
             break
+    
+    plt.plot(train_loss_list, label="train loss")
+    plt.plot(valid_loss_list, label="validation loss")
+    plt.legend()
+    plt.show()
 
 
 def train_epoch(model,
@@ -390,7 +396,7 @@ def train_epoch(model,
                 batch_size=32,
                 log_interval=10):
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3)
 
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
