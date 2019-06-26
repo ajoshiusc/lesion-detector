@@ -124,7 +124,10 @@ def slice2vol_pred(model_pred, vol_data, im_size, step_size=1):
 
             dat = np.transpose(vol_data[:, j:im_size + j, k:im_size + k, :],
                                (0, 3, 1, 2))
+
+            dat = (dat).to('cuda')
             out1, _, _ = model_pred(dat)
+            out1 = (out1).to('cpu')
             out_vol[:, j:im_size + j, k:im_size + k, :] += np.transpose(
                 out1.detach().numpy(), (0, 2, 3, 1))
             #                        [
