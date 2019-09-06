@@ -26,7 +26,7 @@ from sklearn.model_selection import train_test_split
 
 
 #####read data######################
-d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE_GANs/data_24_ISEL.npz')
+d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_24_ISEL.npz')
 X = d['data']
 ####################################
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     plt.legend(loc=4)
     plt.show()
     
-    np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/y_probas_VAE_notcons.npz', data=y_probas)
+    #np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/y_probas_VAE_notcons.npz', data=y_probas)
     #np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/y_true_VAE.npz', data=y_true)
     y_probas[y_probas >=0.7]=1
     y_probas[y_probas <0.7]=0
