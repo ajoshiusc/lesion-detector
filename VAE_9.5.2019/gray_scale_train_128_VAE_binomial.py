@@ -20,31 +20,10 @@ import random
 import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
+from torch.nn import functional as F
 pret=0
 random.seed(8)
-def lesion_generator():
-    lesion = np.zeros((1,3,128,128))
-    indx = random.randint(32, 96)
-    indy = random.randint(32, 96)
-    centr = ((np.array([indx, indy]))[:, None]).T
-    #nsamples = (np.array([10, 10]))[:, None
 
-    blob, _ = make_blobs(
-            n_samples=10,
-            n_features=2,
-            centers=centr,
-            cluster_std=random.uniform(0, 5))
-
-    #blob = np.int16(
-            #np.clip(np.round(blob), [0, 0],
-                #np.array(t1.shape) - 1))
-    blob=np.round(np.int16(blob))          
-    lesion[:,:,blob[:, 0], blob[:, 1]]= 1.0
-            #lesion[blob.ravel]=1.0
-
-    lesion = gaussian_filter(lesion, 5)
-    lesion /= lesion.max()
-    return lesion
             
 def show_and_save(file_name,img):
     f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/rexult_binomial/%s.png" % file_name
@@ -55,47 +34,22 @@ def show_and_save(file_name,img):
     #plt.imshow(npimg)
     #plt.imsave(f,npimg)
     
-def save_model(epoch, encoder, decoder, D):
+def save_model(epoch, encoder, decoder):
     torch.save(decoder.cpu().state_dict(), './VAE_GAN_decoder_%d.pth' % epoch)
     torch.save(encoder.cpu().state_dict(),'./VAE_GAN_encoder_%d.pth' % epoch)
-    torch.save(D.cpu().state_dict(), 'VAE_GAN_D_%d.pth' % epoch)
     decoder.cuda()
     encoder.cuda()
-    D.cuda()
+
     
-def load_model(epoch, encoder, decoder, D):
+def load_model(epoch, encoder, decoder):
     #  restore models
     decoder.load_state_dict(torch.load('./VAE_GAN_decoder_%d.pth' % epoch))
     decoder.cuda()
     encoder.load_state_dict(torch.load('./VAE_GAN_encoder_%d.pth' % epoch))
     encoder.cuda()
-    D.load_state_dict(torch.load('VAE_GAN_D_%d.pth' % epoch))
-    D.cuda()
 
-class CelebADataset(Dataset):
-    def __init__(self, h5_path, transform=None):
-        assert (os.path.isfile(h5_path))
-        self.h5_path = h5_path
-        self.transform = transform
-        
-        # loading the dataset into memory
-        f = h5py.File(self.h5_path, "r")
-        key = list(f.keys())
-        print ("key list:", key)
-        self.dataset = f[key[0]]
-        self.dataset = self.dataset[:1000]
-        print ("dataset loaded and its shape:", self.dataset.shape)
-    
-    def __getitem__(self, index):
-        img = self.dataset[index]
-        img = np.transpose(img, (1, 2, 0))
-        if self.transform is not None:
-            img = self.transform(img)
-            
-        return img, 0
-    
-    def __len__(self):
-        return len(self.dataset)
+
+
 batch_size =8
 ###
 d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_119_maryland.npz')
@@ -210,7 +164,7 @@ class Decoder(nn.Module):
             # 32 x 128 x 128
         self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
             # 3 x 128 x 128
-        self.activation = nn.Tanh()
+        self.activation = nn.Sigmoid()
             
     
     def forward(self, code):
@@ -251,46 +205,7 @@ class VAE_GAN_Generator(nn.Module):
         rec_images = self.decoder(reparametrized_noise)
         
         return mean, logvar, rec_images
-class Discriminator(nn.Module):
-    def __init__(self, input_channels, representation_size=(256, 16, 16)):  
-        super(Discriminator, self).__init__()
-        self.representation_size = representation_size
-        dim = representation_size[0] * representation_size[1] * representation_size[2]
-        
-        self.main = nn.Sequential(
-            nn.Conv2d(input_channels, 32, 5, stride=1, padding=2),
-            nn.BatchNorm2d(32),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(32, 128, 5, stride=2, padding=2),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 256, 5, stride=2, padding=2),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(256, 256, 5, stride=2, padding=2),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2))
-        
-        self.lth_features = nn.Sequential(
-            nn.Linear(dim, 2048),
-            nn.LeakyReLU(0.2))
-        
-        self.sigmoid_output = nn.Sequential(
-            nn.Linear(2048, 1),
-            nn.Sigmoid())
-        
-    def forward(self, x):
-        batch_size = x.size()[0]
-        features = self.main(x)
-        lth_rep = self.lth_features(features.view(batch_size, -1))
-        output = self.sigmoid_output(lth_rep)
-        return output
-    
-    def similarity(self, x):
-        batch_size = x.size()[0]
-        features = self.main(x)
-        lth_rep = self.lth_features(features.view(batch_size, -1))
-        return lth_rep
+
 
 # define constant
 input_channels = 3
@@ -302,11 +217,9 @@ beta = 0
 
 
 G = VAE_GAN_Generator(input_channels, hidden_size).cuda()
-D = Discriminator(input_channels).cuda()
 
 
-criterion = nn.BCELoss()
-criterion.cuda()
+
 
 opt_enc = optim.Adam(G.parameters(), lr=lr)
 #opt_dec = optim.Adam(G.decoder.parameters(), lr=lr)
@@ -319,53 +232,43 @@ fixed_batch = Variable(data).cuda()
 
 
 
-def se_loss(Y, X):
-    loss1 = torch.sum((X - Y)**2)
+
+def MSE_loss(Y, X):
+    ret = (X- Y) ** 2
+    ret = torch.sum(ret,1)
+    return ret 
+def BMSE_loss(Y, X, beta,sigma,Dim):
+    term1 = -((1+beta) / beta)
+    K1=1/pow((2*math.pi*( sigma** 2)),(beta*Dim/2))
+    term2=MSE_loss(Y, X)
+    term3=torch.exp(-(beta/(2*( sigma** 2)))*term2)
+    loss1=torch.sum(term1*(K1*term3-1))
     return loss1
 
-
-def BBFC_loss(Y, X, beta):
-    term1 = (1 / beta)
-    Y = Y * 0.99999 + 1e-6
-    #print(X)
-    #print(Y)
-    term2 = (X * torch.pow(Y, beta)) + (1 - X) * torch.pow((1 - Y), beta)
-    term2 = torch.prod(term2, dim=1) - 1
-    #print(term2.shape)
-    term3 = torch.pow(Y, (beta + 1)) + torch.pow((1 - Y), (beta + 1))
-    term3 = torch.prod(term3, dim=1) / (beta + 1)
-    loss1 = torch.sum(-term1 * term2 + term3)
-
-    if torch.isnan(loss1):
-        print('nan loss')
-
-    return loss1
-
-
+BCE = nn.BCELoss()
 # Reconstruction + KL divergence losses summed over all elements and batch
 def beta_loss_function(recon_x, x, mu, logvar, beta):
 
     if beta > 0:
+        sigma=1
         # If beta is nonzero, use the beta entropy
-        BBCE = BBFC_loss(recon_x, x.view(-1, 784), beta)
+        BBCE = BMSE_loss(recon_x.view(-1, 128*128*3), x.view(-1, 128*128*3), beta,sigma,128*128*3)
     else:
         # if beta is zero use binary cross entropy
-        BBCE = F.binary_cross_entropy(recon_x,
-                                      x.view(-1, 784),
-                                      reduction='sum')
+        BBCE = BCE(recon_x.view(-1, 128*128*3),x.view(-1, 128*128*3))
 
     # compute KL divergence
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BBCE + KLD
+    return BBCE +KLD
 
 if pret==1:
-    load_model(499, G.encoder, G.decoder, D)
-
+    load_model(499, G.encoder, G.decoder)
 
 train_loss=0
 valid_loss=0
 valid_loss_list, train_loss_list= [], []
+beta=0
 for epoch in range(max_epochs):
     train_loss=0
     valid_loss=0
@@ -406,7 +309,7 @@ for epoch in range(max_epochs):
 
     #localtime = time.asctime( time.localtime(time.time()) )
     #D_real_list_np=(D_real_list).to('cpu')
-save_model(epoch, G.encoder, G.decoder, D)    
+save_model(epoch, G.encoder, G.decoder)    
 plt.plot(train_loss_list, label="train loss")
 plt.plot(valid_loss_list, label="validation loss")
 plt.legend()

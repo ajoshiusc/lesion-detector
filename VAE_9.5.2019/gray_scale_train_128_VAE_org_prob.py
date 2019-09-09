@@ -186,9 +186,9 @@ class Decoder(nn.Module):
         output_mu = self.deconv4(output, output_size=(bs, 3, 128, 128))
         #output_mu= self.activation(output_mu)
 
-        output_sig = self.relu(self.deconv5(output, output_size=(bs, 3, 128, 128)))
+        output_logvar = self.deconv5(output, output_size=(bs, 3, 128, 128))
         #output_sig= self.activation(output_sig)
-        return output_mu, output_sig
+        return output_mu, output_logvar
 
 
 
@@ -271,21 +271,23 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 def prob_loss_function(recon_x,var_x, x, mu, logvar):
     
     var_x=var_x+0.0000000000001
-    var_x=0.000021
-    const=1/(((2*math.pi)**0.5)*var_x)####var should be positive?
+    std = var_x.mul(0.5).exp_()
+    std=std+0.0000000000001
+    #std_all=torch.prod(std,dim=1)
+    const=(-torch.sum(var_x,(1,2,3)))/2
     #const=const.repeat(10,1,1,1) ##check if it is correct
     x_temp=x.repeat(10,1,1,1)
-
-    bb=(1/(((2*math.pi)**0.5)*var_x))*math.exp(-(0.5)*(((.000002)/var_x)**2))
+    term1=torch.sum((((recon_x-x_temp)/std)**2),(1, 2,3))
     
-    print(torch.max(bb))
-    print(torch.min(bb))
-    probxl=torch.log(bb+0.00001)
-    BBCE=torch.sum(probxl/10)
+ 
+    #term2=torch.log(const+0.0000000000001)
+    prob_term=const+(-(0.5)*term1)
+    
+    BBCE=torch.sum(prob_term/10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BBCE +KLD
+    return -BBCE +KLD
 
 
 
@@ -332,13 +334,13 @@ for epoch in range(max_epochs):
     _, _, rec_imgs,var_img = G(fixed_batch)
     show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]).cpu(),8))
     show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
-    samples = G.decoder(fixed_noise)
-    show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[0:8,2:3,:,:]).cpu(),8))
+    #samples = G.decoder(fixed_noise)
+    #show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[0:8,2:3,:,:]).cpu(),8))
     show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:8,2:3,:,:]-rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
 
     #localtime = time.asctime( time.localtime(time.time()) )
     #D_real_list_np=(D_real_list).to('cpu')
-save_model(epoch, G.encoder, G.decoder, D)    
+save_model(epoch, G.encoder, G.decoder)    
 plt.plot(train_loss_list, label="train loss")
 plt.plot(valid_loss_list, label="validation loss")
 plt.legend()
