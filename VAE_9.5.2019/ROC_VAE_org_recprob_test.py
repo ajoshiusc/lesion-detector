@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from sklearn import metrics
 import scipy.signal
 from sklearn.model_selection import train_test_split
+import math
 
 pret=0
 
@@ -323,24 +324,31 @@ def Validation(X):
             f_data = data[:, 2, :, :]
             #f_recon_batch = f_recon_batch[:, 2, :, :]
             rec_error = (f_data - f_recon_batch)
+
             #rec_error=torch.mean(rec_error,1)
-            if i<2:
+            if i<1:
                 n = min(f_data.size(0), 100)
                 err=(f_data.view(batch_size,1, 128, 128)[:n] -
                      f_recon_batch.view(batch_size,1, 128, 128)[:n])
-                err=err
+                print(torch.max(torch.abs(err)))
+                print(torch.min(torch.abs(err)))
+                const=1/((2*math.pi)**0.5)
+                err=const*torch.exp(-(0.5)*((err)**2))     
+                print(torch.max(err))
+                print(torch.min(err))
+
                 #err=torch.mean(err,1)
-                median=(err).to('cpu')
-                median=median.numpy()
-                median=scipy.signal.medfilt(median,(1,1,7,7))
-                median=median.astype('float32')
-                median = np.clip(median, 0, 1)
-                scale_error=np.max(median,axis=2)
-                scale_error=np.max(scale_error,axis=2)
-                scale_error=np.reshape(scale_error,(-1,1,1,1))
-                err=median/scale_error
-                err=torch.from_numpy(err)
-                err=(err).to(device)
+                #median=(err).to('cpu')
+                #median=median.numpy()
+                #median=scipy.signal.medfilt(median,(1,1,7,7))
+                #median=median.astype('float32')
+                #median = np.clip(median, 0, 1)
+                #scale_error=np.max(median,axis=2)
+                #scale_error=np.max(scale_error,axis=2)
+                #scale_error=np.reshape(scale_error,(-1,1,1,1))
+                #err=median/scale_error
+                #err=torch.from_numpy(err)
+                #err=(err).to(device)
 
                 comparison = torch.cat([
                     f_data.view(batch_size, 1, 128, 128)[:n],

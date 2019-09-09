@@ -22,32 +22,10 @@ from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
 pret=0
 random.seed(8)
-def lesion_generator():
-    lesion = np.zeros((1,3,128,128))
-    indx = random.randint(32, 96)
-    indy = random.randint(32, 96)
-    centr = ((np.array([indx, indy]))[:, None]).T
-    #nsamples = (np.array([10, 10]))[:, None
 
-    blob, _ = make_blobs(
-            n_samples=10,
-            n_features=2,
-            centers=centr,
-            cluster_std=random.uniform(0, 5))
-
-    #blob = np.int16(
-            #np.clip(np.round(blob), [0, 0],
-                #np.array(t1.shape) - 1))
-    blob=np.round(np.int16(blob))          
-    lesion[:,:,blob[:, 0], blob[:, 1]]= 1.0
-            #lesion[blob.ravel]=1.0
-
-    lesion = gaussian_filter(lesion, 5)
-    lesion /= lesion.max()
-    return lesion
             
 def show_and_save(file_name,img):
-    f = "/big_disk/akrami/git_repos/lesion-detector/src/VAE_GANs/figs_VAE/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob/%s.png" % file_name
     save_image(img[2:3,:,:],f)
     
     #fig = plt.figure(dpi=300)
@@ -55,50 +33,25 @@ def show_and_save(file_name,img):
     #plt.imshow(npimg)
     #plt.imsave(f,npimg)
     
-def save_model(epoch, encoder, decoder, D):
+def save_model(epoch, encoder, decoder):
     torch.save(decoder.cpu().state_dict(), './VAE_GAN_decoder_%d.pth' % epoch)
     torch.save(encoder.cpu().state_dict(),'./VAE_GAN_encoder_%d.pth' % epoch)
-    torch.save(D.cpu().state_dict(), 'VAE_GAN_D_%d.pth' % epoch)
     decoder.cuda()
     encoder.cuda()
-    D.cuda()
+   
     
-def load_model(epoch, encoder, decoder, D):
+def load_model(epoch, encoder, decoder):
     #  restore models
     decoder.load_state_dict(torch.load('./VAE_GAN_decoder_%d.pth' % epoch))
     decoder.cuda()
     encoder.load_state_dict(torch.load('./VAE_GAN_encoder_%d.pth' % epoch))
     encoder.cuda()
-    D.load_state_dict(torch.load('VAE_GAN_D_%d.pth' % epoch))
-    D.cuda()
+    
 
-class CelebADataset(Dataset):
-    def __init__(self, h5_path, transform=None):
-        assert (os.path.isfile(h5_path))
-        self.h5_path = h5_path
-        self.transform = transform
-        
-        # loading the dataset into memory
-        f = h5py.File(self.h5_path, "r")
-        key = list(f.keys())
-        print ("key list:", key)
-        self.dataset = f[key[0]]
-        self.dataset = self.dataset[:1000]
-        print ("dataset loaded and its shape:", self.dataset.shape)
-    
-    def __getitem__(self, index):
-        img = self.dataset[index]
-        img = np.transpose(img, (1, 2, 0))
-        if self.transform is not None:
-            img = self.transform(img)
-            
-        return img, 0
-    
-    def __len__(self):
-        return len(self.dataset)
+
 batch_size =8
 ###
-d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE_GANs/data_119_maryland.npz')
+d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_119_maryland.npz')
 X=d['data']
 #X = np.transpose(X, (0, 2, 3,1))
 
@@ -209,8 +162,10 @@ class Decoder(nn.Module):
                                   nn.ReLU())
             # 32 x 128 x 128
         self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
+        self.deconv5 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
             # 3 x 128 x 128
         self.activation = nn.Tanh()
+        self.relu=nn.ReLU()
             
     
     def forward(self, code):
@@ -226,12 +181,20 @@ class Decoder(nn.Module):
         output = self.act2(output)
         output = self.deconv3(output, output_size=(bs, 32, 128, 128))
         output = self.act3(output)
-        output = self.deconv4(output, output_size=(bs, 3, 128, 128))
-        output = self.activation(output)
-        return output
-class VAE_GAN_Generator(nn.Module):
+        output=self.activation(output)
+
+        output_mu = self.deconv4(output, output_size=(bs, 3, 128, 128))
+        #output_mu= self.activation(output_mu)
+
+        output_sig = self.relu(self.deconv5(output, output_size=(bs, 3, 128, 128)))
+        #output_sig= self.activation(output_sig)
+        return output_mu, output_sig
+
+
+
+class VAE_Generator(nn.Module):
     def __init__(self, input_channels, hidden_size, representation_size=(256, 16, 16)):
-        super(VAE_GAN_Generator, self).__init__()
+        super(VAE_Generator, self).__init__()
         self.input_channels = input_channels
         self.hidden_size = hidden_size
         self.representation_size = representation_size
@@ -244,53 +207,17 @@ class VAE_GAN_Generator(nn.Module):
         mean, logvar = self.encoder(x)
         std = logvar.mul(0.5).exp_()
         
-        reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
+        for i in range (10):
+            reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
 
-        reparametrized_noise = mean + std * reparametrized_noise
-
-        rec_images = self.decoder(reparametrized_noise)
-        
-        return mean, logvar, rec_images
-class Discriminator(nn.Module):
-    def __init__(self, input_channels, representation_size=(256, 16, 16)):  
-        super(Discriminator, self).__init__()
-        self.representation_size = representation_size
-        dim = representation_size[0] * representation_size[1] * representation_size[2]
-        
-        self.main = nn.Sequential(
-            nn.Conv2d(input_channels, 32, 5, stride=1, padding=2),
-            nn.BatchNorm2d(32),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(32, 128, 5, stride=2, padding=2),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 256, 5, stride=2, padding=2),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(256, 256, 5, stride=2, padding=2),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2))
-        
-        self.lth_features = nn.Sequential(
-            nn.Linear(dim, 2048),
-            nn.LeakyReLU(0.2))
-        
-        self.sigmoid_output = nn.Sequential(
-            nn.Linear(2048, 1),
-            nn.Sigmoid())
-        
-    def forward(self, x):
-        batch_size = x.size()[0]
-        features = self.main(x)
-        lth_rep = self.lth_features(features.view(batch_size, -1))
-        output = self.sigmoid_output(lth_rep)
-        return output
-    
-    def similarity(self, x):
-        batch_size = x.size()[0]
-        features = self.main(x)
-        lth_rep = self.lth_features(features.view(batch_size, -1))
-        return lth_rep
+            reparametrized_noise = mean + std * reparametrized_noise
+            if i==0:
+                rec_images,var_image = self.decoder(reparametrized_noise)
+            else:
+                rec_images_tmp,var_image_tmp=self.decoder(reparametrized_noise)
+                rec_images=torch.cat([rec_images,rec_images_tmp],0)
+                var_image=torch.cat([var_image,var_image_tmp],0)
+        return mean, logvar, rec_images,var_image
 
 # define constant
 input_channels = 3
@@ -301,16 +228,9 @@ lr = 3e-4
 beta = 0
 
 
-G = VAE_GAN_Generator(input_channels, hidden_size).cuda()
-D = Discriminator(input_channels).cuda()
-
-
-criterion = nn.BCELoss()
-criterion.cuda()
-
+G = VAE_Generator(input_channels, hidden_size).cuda()
 opt_enc = optim.Adam(G.parameters(), lr=lr)
-#opt_dec = optim.Adam(G.decoder.parameters(), lr=lr)
-#opt_dis = optim.Adam(D.parameters(), lr=lr * alpha)
+
 
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
 data= next(iter(Validation_loader))
@@ -348,8 +268,29 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
     return BBCE +KLD
 
+def prob_loss_function(recon_x,var_x, x, mu, logvar):
+    
+    var_x=var_x+0.0000000000001
+    var_x=0.000021
+    const=1/(((2*math.pi)**0.5)*var_x)####var should be positive?
+    #const=const.repeat(10,1,1,1) ##check if it is correct
+    x_temp=x.repeat(10,1,1,1)
+
+    bb=(1/(((2*math.pi)**0.5)*var_x))*math.exp(-(0.5)*(((.000002)/var_x)**2))
+    
+    print(torch.max(bb))
+    print(torch.min(bb))
+    probxl=torch.log(bb+0.00001)
+    BBCE=torch.sum(probxl/10)
+
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    return BBCE +KLD
+
+
+
 if pret==1:
-    load_model(499, G.encoder, G.decoder, D)
+    load_model(499, G.encoder, G.decoder)
 
 
 train_loss=0
@@ -365,34 +306,35 @@ for epoch in range(max_epochs):
         datav = Variable(data).cuda()
         #datav[l2,:,row2:row2+5,:]=0
 
-        mean, logvar, rec_enc = G(datav)
-        beta_err=beta_loss_function(rec_enc, datav, mean, logvar,beta) 
-        err_enc = beta_err
+        mean, logvar, rec_enc, var_enc = G(datav)
+        prob_err=prob_loss_function(rec_enc,var_enc, datav, mean, logvar) 
+        err_enc = prob_err
         opt_enc.zero_grad()
         err_enc.backward()
         opt_enc.step()
-        train_loss+=beta_err.item()
+        train_loss+=prob_err.item()
     train_loss /= len(train_loader.dataset)
-
-
+        
 
     G.eval()
     with torch.no_grad():
         for data in Validation_loader:
             data = Variable(data).cuda()
-            mean,logvar, valid_rec = G(data)
-            beta_err=beta_loss_function(valid_rec, data, mean, logvar,beta) 
+            mean, logvar, valid_enc, valid_var_enc = G(data)
+            beta_err=prob_loss_function(valid_enc,valid_var_enc, data, mean, logvar)
             valid_loss+=beta_err.item()
         valid_loss /= len(Validation_loader.dataset)
 
     
     print(valid_loss)
-    _, _, rec_imgs = G(fixed_batch)
+    train_loss_list.append(train_loss)
+    valid_loss_list.append(valid_loss)
+    _, _, rec_imgs,var_img = G(fixed_batch)
     show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]).cpu(),8))
-    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[:,2:3,:,:]).cpu(),8))
+    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
     samples = G.decoder(fixed_noise)
-    show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[:,2:3,:,:]).cpu(),8))
-    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]-rec_imgs.data[:,2:3,:,:]).cpu(),8))
+    show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[0:8,2:3,:,:]).cpu(),8))
+    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:8,2:3,:,:]-rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
 
     #localtime = time.asctime( time.localtime(time.time()) )
     #D_real_list_np=(D_real_list).to('cpu')

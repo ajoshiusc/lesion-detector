@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from sklearn import metrics
 import scipy.signal
 from sklearn.model_selection import train_test_split
+import math
 
 pret=0
 
@@ -302,6 +303,23 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
 ####################################
 
+#########reconstruction probability##############
+
+def recon_prob(x,Lnumb):
+    probxl=0
+    for i in range(Lnumb):
+        _, _,Mu=G(x)
+        Mu=Mu[:,2,:,:]
+        const=1/((2*math.pi)**0.5)
+        probxl+=const*torch.exp(-(0.5)*((x[:,2,:,:]-Mu)**2))
+    probxl=probxl/Lnumb
+    print(torch.max(probxl))
+    print(torch.min(probxl))
+    return probxl
+
+##################################################
+
+
 ##########TEST##########
 def Validation(X):
     G.eval()
@@ -315,40 +333,29 @@ def Validation(X):
             ind = ind + batch_size
             seg = torch.from_numpy(seg)
             seg = (seg).to(device)
-            _, _, arr_lowrec = G(data)
-            f_recon_batch = arr_lowrec[:, 2, :, :]
-
-            
-
+            err=recon_prob(data[:,:,:,:],50)
             f_data = data[:, 2, :, :]
-            #f_recon_batch = f_recon_batch[:, 2, :, :]
-            rec_error = (f_data - f_recon_batch)
+
             #rec_error=torch.mean(rec_error,1)
-            if i<2:
+            if i<20:
                 n = min(f_data.size(0), 100)
-                err=(f_data.view(batch_size,1, 128, 128)[:n] -
-                     f_recon_batch.view(batch_size,1, 128, 128)[:n])
-                err=err
+                err=(err.view(batch_size,1, 128, 128)[:n])
                 #err=torch.mean(err,1)
-                median=(err).to('cpu')
-                median=median.numpy()
-                median=scipy.signal.medfilt(median,(1,1,7,7))
-                median=median.astype('float32')
-                median = np.clip(median, 0, 1)
-                scale_error=np.max(median,axis=2)
-                scale_error=np.max(scale_error,axis=2)
-                scale_error=np.reshape(scale_error,(-1,1,1,1))
-                err=median/scale_error
-                err=torch.from_numpy(err)
-                err=(err).to(device)
+                #median=(err).to('cpu')
+                #median=median.numpy()
+                #median=scipy.signal.medfilt(median,(1,1,7,7))
+                #median=median.astype('float32')
+                #median = np.clip(median, 0, 1)
+                #scale_error=np.max(median,axis=2)
+                #scale_error=np.max(scale_error,axis=2)
+                #scale_error=np.reshape(scale_error,(-1,1,1,1))
+                #err=median/scale_error
+                #err=torch.from_numpy(err)
+                #err=(err).to(device)
 
                 comparison = torch.cat([
                     f_data.view(batch_size, 1, 128, 128)[:n],
-                    f_recon_batch.view(batch_size, 1, 128, 128)[:n],
                     err.view(batch_size, 1, 128, 128)[:n],
-                    torch.abs(
-                        f_data.view(batch_size, 1, 128, 128)[:n] -
-                        f_recon_batch.view(batch_size, 1, 128, 128)[:n]),
                     seg.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
@@ -356,9 +363,9 @@ def Validation(X):
                            nrow=n)
                 
             if i==0:
-                rec_error_all = rec_error
+                rec_error_all = err
             else:
-                rec_error_all = torch.cat([rec_error_all, rec_error])
+                rec_error_all = torch.cat([rec_error_all, err])
     #test_loss /= len(Validation_loader.dataset)
     print('====> Test set loss: {:.4f}'.format(test_loss))
     return rec_error_all
@@ -392,8 +399,8 @@ if __name__ == "__main__":
     plt.show()
     
    
-    y_probas[y_probas >=0.2]=1
-    y_probas[y_probas <0.2]=0
+    y_probas[y_probas >=1]=1
+    y_probas[y_probas <0.1]=0
 
     y_probas = np.reshape(y_probas, (-1,128*128*20))
     y_true = np.reshape(y_true, (-1,128*128*20))
