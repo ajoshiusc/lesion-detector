@@ -222,7 +222,7 @@ class VAE_Generator(nn.Module):
 # define constant
 input_channels = 3
 hidden_size = 64
-max_epochs = 400
+max_epochs = 50
 lr = 3e-4
 
 beta = 0
