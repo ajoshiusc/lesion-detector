@@ -214,8 +214,8 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=49
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob'
+epoch=99
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob_notnorm'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -265,28 +265,28 @@ def Validation(X):
 
 
 
-            tem_rec_enc=rec_enc.view(8,10,3,128,128)
-            tem_var_enc=var_enc.view(8,10,3,128,128)
+            tem_rec_enc=rec_enc.view(10,-1,3,128,128)
+            tem_var_enc=var_enc.view(10,-1,3,128,128)
             std2=tem_var_enc.exp_()
-            mu_all=torch.mean(tem_rec_enc,(1))
-            mu2_all=torch.mean((tem_rec_enc**2),(1))
-            std2=torch.mean(std2,(1))
+            mu_all=torch.mean(tem_rec_enc,(0))
+            mu2_all=torch.mean((tem_rec_enc**2),(0))
+            std2=torch.mean(std2,(0))
 
             std_all=std2+mu2_all-((mu_all)**2)
             
-            thesh_all_upp=mu_all+3*(std_all**(0.5))
+            thesh_all_upp=mu_all+6*(std_all**(0.5))
             #print(torch.max(thesh_all_upp))
-            err=data-thesh_all_upp
-            err[err<=0]=0
+            #err=data-thesh_all_upp
+            err=data+0
+            err[data<=thesh_all_upp]=0
             
             f_recon_batch=mu_all[:,2,:,:]
             f_data=data[:,2,:,:]
-            err = 4*err[:, 2, :, :]
-            sig_plot=3*((std_all**(0.5))[:,2,:,:])
-            print(torch.max(sig_plot))
-            print(torch.min(sig_plot))
+            err = err[:, 2, :, :]
+            sig_plot=((std_all**(0.5))[:,2,:,:])
             
-            if i<20:
+            
+            if i<2:
                 n = min(f_data.size(0), 100)
                 err_rec=(err.view(batch_size,1, 128, 128)[:n])
                 
@@ -294,29 +294,27 @@ def Validation(X):
                 median=median.numpy()
                 median=scipy.signal.medfilt(median,(1,1,7,7))
                 median=median.astype('float32')
-                median = np.clip(median, 0, 1)
-                scale_error=np.max(median,axis=2)
-                scale_error=np.max(scale_error,axis=2)
-                scale_error=np.reshape(scale_error,(-1,1,1,1))
-                err_rec=median*4
-                #err_rec=median/scale_error
+                #median = np.clip(median, 0, 1)
+            
+                err_rec=median+0
                 err_rec=torch.from_numpy(err_rec)
                 err_rec=(err_rec).to(device)
 
                 comparison = torch.cat([
                     f_data.view(batch_size, 1, 128, 128)[:n],
                     f_recon_batch.view(batch_size, 1, 128, 128)[:n],
-                    err.view(batch_size, 1, 128, 128)[:n],
                     sig_plot.view(batch_size, 1, 128, 128)[:n],
-
+                    err.view(batch_size, 1, 128, 128)[:n],
+                    (f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n]),
+                    0.1*(f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n])/sig_plot.view(batch_size, 1, 128, 128)[:n],
                     seg.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
                            'result_VAE_prob_valid/reconstruction_b' +str(i)+ '.png',
                            nrow=n)
-                
+            print(torch.max(f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n])/sig_plot.view(batch_size, 1, 128, 128)[:n]))
             if i==0:
-                rec_error_all = err
+                rec_error_all = err+0
             else:
                 rec_error_all = torch.cat([rec_error_all, err])
     #test_loss /= len(Validation_loader.dataset)
@@ -326,4 +324,29 @@ def Validation(X):
 
 if __name__ == "__main__":
     rec_error_all = Validation(X)
+    y_true = X[0:15*20 ,:, :, 3]
+    y_true = np.reshape(y_true, (-1, 1))
+    
+    y_probas = (rec_error_all).to('cpu')
+    y_probas = y_probas.numpy()
+    
+    y_probas =np.reshape(y_probas, (-1, 1,128,128))
+    median=scipy.signal.medfilt(y_probas,(1,1,7,7))
+    median=median.astype('float32')
+               
+            
+    y_probas=median+0
+    y_probas[y_probas >0]=1
+    
+
+    y_probas = np.reshape(y_probas, (-1,128*128*20))
+    y_true = np.reshape(y_true, (-1,128*128*20))
+    
+    dice=0
+    for i in range(y_probas.shape[0]):
+        seg=y_probas[i,:]
+        gth=y_true[i,:]
+        dice += np.sum(seg[gth==1])*2.0 / (np.sum(gth) + np.sum(seg))
+        #print((dice))
+    print((dice)/y_probas.shape[0])
     
