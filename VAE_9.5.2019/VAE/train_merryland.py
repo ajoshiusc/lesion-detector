@@ -17,13 +17,13 @@ from torchsummary import summary
 import matplotlib.pyplot as plt
 from scipy import stats
 
-import VAE_models
+import VAE_models_functional
 from sklearn.model_selection import train_test_split
 seed = 10009
-epochs =80
+epochs =200
 batch_size = 8
 log_interval = 10
-beta=0
+beta=0.00035
 sigma=1
 z=32
 
@@ -63,26 +63,21 @@ device = torch.device("cuda" if args.cuda else "cpu")
 
 torch.manual_seed(seed)
 
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-0.00005
+
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
 #print(y_test[1:10])
-d=np.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE/data_119_maryland.npz')
+d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_119_maryland.npz')
 X=d['data']
-#X = np.transpose(X, (0, 2, 3,1))
 
-max_val=np.max(X,1)
-max_val=np.max(max_val,1)
-max_val=np.reshape(max_val,(-1,1,1,3))
+
+max_val=np.max(X)
+max_val=np.max(max_val)
+#max_val=np.reshape(max_val,(-1,1,1,3))
 X = X/ max_val
-#mean_val=stats.mode(X,axis=1)
-#mean_val=stats.mode(mean_val[0],axis=2)
-#mean_val=np.reshape(mean_val[0],(-1,1,1,3))
-#X = X- mean_val
+
 X = X.astype('float64')
-#X=np.clip(X,0,1)
-D=X.shape[1]*X.shape[2]
+D=X.shape[1]*X.shape[2]*X.shape[3]
 
 
 X_train, X_valid = train_test_split(X, test_size=0.1, random_state=10002,shuffle=False)
@@ -108,21 +103,9 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           shuffle=True)
 
 
-#####test data####
-#x_test=np.load('x_test.npy')
-#x_test = x_test/ 255
-#x_test = x_test.astype('float64')
-#y_test=y_test.astype('float64')
-#x_test=x_test.reshape((x_test.shape[0],1,x_test.shape[1],x_test.shape[2] ))
 
-#test_data = torch.from_numpy(x_test).float()
-#test_data = test_data.to('cuda') if args.cuda else test_data.to('cpu')
 
-#test_loader = torch.utils.data.DataLoader(test_data,
-                                          #batch_size=batch_size,
-                                         #shuffle=False)
-
-model = VAE_models.VAE_nf(z)
+model = VAE_models_functional.VAE_nf(z)
 model.have_cuda = args.cuda
 
 if args.cuda:
@@ -130,7 +113,7 @@ if args.cuda:
 
 print(model)
 summary(model, (3, 128, 128))
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr=3*1e-4)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def MSE_loss(Y, X):
@@ -242,40 +225,12 @@ def Validation(epoch):
     return logvar_all,mu_all,test_loss
 
 
-def test(epoch):
-    model.eval()
-    test_loss = 0
-    with torch.no_grad():
-        for i, data in enumerate(test_loader):
-            #        data = (data.gt(0.5).type(torch.FloatTensor)).to(device)
-            data = (data).to(device)
-
-            recon_batch, mu, logvar = model(data)
-            #print(mu.shape)
-            test_loss += loss_function(recon_batch, data, mu,
-                                            logvar).item()
-            if i == 0:
-                mu_all=mu
-                logvar_all=logvar
-            else:
-                mu_all=torch.cat([
-                    mu_all,
-                    mu
-                ])
-                logvar_all=torch.cat([
-                    logvar_all,
-                    logvar
-                ])
-    test_loss /= len(test_loader.dataset)
-    print('====> Test set loss: {:.4f}'.format(test_loss))
-    return logvar_all,mu_all
-
 
 if __name__ == "__main__":
     train_loss_list = []
     valid_loss_list = []
     best_loss = np.inf
-    patience = 100
+    patience = 10
     no_improvement = 0
     improvment=0
     delta = 0.0001
@@ -296,8 +251,9 @@ if __name__ == "__main__":
         if no_improvement == patience:
             print("Quitting training for early stopping at epoch ", epoch)
             break
+    
 
-    torch.save(model.state_dict(), '/big_disk/akrami/git_repos/lesion-detector/src/VAE/models/model_drop_%f_%f_%f.pt' % (z,beta,sigma))
+    torch.save(model.state_dict(), '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE/results/model_skip_%f_%f_%f.pt' % (z,beta,sigma))
 
     plt.plot(train_loss_list, label="train loss")
     plt.plot(valid_loss_list, label="validation loss")
