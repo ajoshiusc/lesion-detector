@@ -8,6 +8,9 @@ from scipy.ndimage.morphology import binary_erosion
 import random
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
+from skimage.transform import match_histograms
+import torch
+from torch.autograd import Variable
 
 
 def read_data(study_dir,
@@ -16,10 +19,13 @@ def read_data(study_dir,
               psize,
               npatch_perslice,
               erode_sz=1,
-              lesioned=True):
+              lesioned=False,
+              dohisteq=False):
     # erode_sz: reads the mask and erodes it by given number of voxels
     #    dirlist = glob.glob(study_dir + '/TBI*')
     subno = 0
+    ref_imgs = 0
+    ref_imgs_set = False
 
     for subj in subids:
 
@@ -56,6 +62,15 @@ def read_data(study_dir,
 
         imgs = np.stack((t1, t2, flair, t1_msk), axis=3)
 
+        if ref_imgs_set == False:
+            ref_imgs = imgs
+            ref_imgs_set = True
+
+        if dohisteq == True:
+            imgs = match_histograms(image=imgs,
+                                    reference=ref_imgs,
+                                    multichannel=True)
+
         if lesioned == True:
             lesion = np.zeros(t1.shape)
             mskx, msky, mskz = np.where(t1 > 0)
@@ -65,11 +80,10 @@ def read_data(study_dir,
             mskz = mskz[ind]
             #    xyz = np.unravel_index(ind, shape=t1.shape)
             centr = np.array([mskx, msky, mskz])[:, None]
-            blob, _ = make_blobs(
-                n_samples=10,
-                n_features=3,
-                centers=centr,
-                cluster_std=random.uniform(0, 30))
+            blob, _ = make_blobs(n_samples=10,
+                                 n_features=3,
+                                 centers=centr,
+                                 cluster_std=random.uniform(0, 30))
 
             blob = np.int16(
                 np.clip(np.round(blob), [0, 0, 0],
@@ -87,14 +101,14 @@ def read_data(study_dir,
         # preallocate
         if subno == 1:
             num_slices = imgs.shape[2]
-            patch_data = np.zeros((nsub * npatch_perslice * num_slices, psize[0],
-                                   psize[1], imgs.shape[-1]))
+            patch_data = np.zeros((nsub * npatch_perslice * num_slices,
+                                   psize[0], psize[1], imgs.shape[-1]))
 
         for sliceno in tqdm(range(num_slices)):
-            ptch = extract_patches_2d(
-                image=imgs[:, :, sliceno, :],
-                patch_size=psize,
-                max_patches=npatch_perslice)
+            ptch = extract_patches_2d(image=imgs[:, :, sliceno, :],
+                                      patch_size=psize,
+                                      max_patches=npatch_perslice,
+                                      random_state=1121)
 
             strt_ind = (
                 subno -
@@ -110,7 +124,7 @@ def read_data(study_dir,
     return patch_data, mask_data  # npatch x width x height x channels
 
 
-def slice2vol_pred(model_pred, vol_data, mask_data, im_size, step_size=1):
+def slice2vol_pred(model_pred, vol_data, mask_data, im_size, step_size=32):
     # model_pred: predictor that gives 2d images as outputs
     # vol_data this is 3d images + 4th dim for different modalities
     # im_size number with size of images (for 64x64 images) it is 64
@@ -123,10 +137,14 @@ def slice2vol_pred(model_pred, vol_data, mask_data, im_size, step_size=1):
     print('Putting together slices to form volume')
     for j in tqdm(range(0, vol_size[1] - im_size, step_size)):
         for k in range(0, vol_size[2] - im_size, step_size):
-            out_vol[:, j:im_size + j, k:im_size + k, :] += model_pred([
-                vol_data[:, j:im_size + j, k:im_size + k],
-                mask_data[:, j:im_size + j, k:im_size + k, None]
-            ])
+
+            data = torch.tensor(vol_data[:, j:im_size + j, k:im_size +
+                                         k].transpose((0, 3, 1, 2)))
+            data = Variable(data).cuda()
+            #            model_pred = model_pred.to('cpu')
+            for ind in range(data.shape[0]):
+                _, _, out_dat, _ = model_pred(data[None, ind, :])
+                out_vol[ind, j:im_size + j, k:im_size + k, :] += out_dat.cpu().detach().numpy()[0,].transpose((1,2,0))
             #                        [
             #                        vol_data[:, j:im_size + j, k:im_size + k, 0, None],
             #                        vol_data[:, j:im_size + j, k:im_size + k, 1, None],
