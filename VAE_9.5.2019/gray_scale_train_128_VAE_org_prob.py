@@ -25,7 +25,7 @@ random.seed(8)
 
             
 def show_and_save(file_name,img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob_notnorm/%s.png" % file_name
     save_image(img[2:3,:,:],f)
     
     #fig = plt.figure(dpi=300)
@@ -222,9 +222,8 @@ class VAE_Generator(nn.Module):
 # define constant
 input_channels = 3
 hidden_size = 64
-max_epochs = 50
+max_epochs = 40
 lr = 3e-4
-
 beta = 0
 
 
@@ -278,10 +277,11 @@ def prob_loss_function(recon_x,var_x, x, mu, logvar):
     #const=const.repeat(10,1,1,1) ##check if it is correct
     x_temp=x.repeat(10,1,1,1)
     term1=torch.sum((((recon_x-x_temp)/std)**2),(1, 2,3))
+    const2=-((128*128*3)/2)*math.log((2*math.pi))
     
  
     #term2=torch.log(const+0.0000000000001)
-    prob_term=const+(-(0.5)*term1)
+    prob_term=const+(-(0.5)*term1)+const2
     
     BBCE=torch.sum(prob_term/10)
 
@@ -327,7 +327,13 @@ for epoch in range(max_epochs):
             valid_loss+=beta_err.item()
         valid_loss /= len(Validation_loader.dataset)
 
-    
+    if epoch==0:
+        best_val=valid_loss
+    elif (valid_loss < best_val):
+        save_model(epoch, G.encoder, G.decoder)
+        best_val=valid_loss
+
+
     print(valid_loss)
     train_loss_list.append(train_loss)
     valid_loss_list.append(valid_loss)
@@ -340,7 +346,7 @@ for epoch in range(max_epochs):
 
     #localtime = time.asctime( time.localtime(time.time()) )
     #D_real_list_np=(D_real_list).to('cpu')
-save_model(epoch, G.encoder, G.decoder)    
+#save_model(epoch, G.encoder, G.decoder)    
 plt.plot(train_loss_list, label="train loss")
 plt.plot(valid_loss_list, label="validation loss")
 plt.legend()

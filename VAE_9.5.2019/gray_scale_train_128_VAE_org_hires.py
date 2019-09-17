@@ -1,4 +1,8 @@
 from __future__ import print_function
+import numpy as np
+import pywt
+from matplotlib import pyplot as plt
+from pywt._doc_utils import wavedec2_keys, draw_2d_wp_basis
 import argparse
 import h5py
 import numpy as np
@@ -16,38 +20,11 @@ import torchvision.utils as vutils
 from torchvision.utils import save_image
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-import random
-import math
-from sklearn.datasets import make_blobs
-from scipy.ndimage import gaussian_filter
+
 pret=0
-random.seed(8)
-def lesion_generator():
-    lesion = np.zeros((1,3,128,128))
-    indx = random.randint(32, 96)
-    indy = random.randint(32, 96)
-    centr = ((np.array([indx, indy]))[:, None]).T
-    #nsamples = (np.array([10, 10]))[:, None
 
-    blob, _ = make_blobs(
-            n_samples=10,
-            n_features=2,
-            centers=centr,
-            cluster_std=random.uniform(0, 5))
-
-    #blob = np.int16(
-            #np.clip(np.round(blob), [0, 0],
-                #np.array(t1.shape) - 1))
-    blob=np.round(np.int16(blob))          
-    lesion[:,:,blob[:, 0], blob[:, 1]]= 1.0
-            #lesion[blob.ravel]=1.0
-
-    lesion = gaussian_filter(lesion, 5)
-    lesion /= lesion.max()
-    return lesion
-            
 def show_and_save(file_name,img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_reg/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_hi/%s.png" % file_name
     save_image(img[2:3,:,:],f)
     
     #fig = plt.figure(dpi=300)
@@ -55,88 +32,106 @@ def show_and_save(file_name,img):
     #plt.imshow(npimg)
     #plt.imsave(f,npimg)
     
-def save_model(epoch, encoder, decoder, D):
+def save_model(epoch, encoder, decoder):
     torch.save(decoder.cpu().state_dict(), './VAE_GAN_decoder_%d.pth' % epoch)
     torch.save(encoder.cpu().state_dict(),'./VAE_GAN_encoder_%d.pth' % epoch)
-    torch.save(D.cpu().state_dict(), 'VAE_GAN_D_%d.pth' % epoch)
     decoder.cuda()
     encoder.cuda()
-    D.cuda()
+   
     
-def load_model(epoch, encoder, decoder, D):
+def load_model(epoch, encoder, decoder):
     #  restore models
-    decoder.load_state_dict(torch.load('./VAE_GAN_decoder_%d.pth' % epoch))
+    decoder.load_state_dict(torch.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE_GANs/figs3/VAE_GAN_decoder_%d.pth' % epoch))
     decoder.cuda()
-    encoder.load_state_dict(torch.load('./VAE_GAN_encoder_%d.pth' % epoch))
+    encoder.load_state_dict(torch.load('/big_disk/akrami/git_repos/lesion-detector/src/VAE_GANs/figs3/VAE_GAN_encoder_%d.pth' % epoch))
     encoder.cuda()
-    D.load_state_dict(torch.load('VAE_GAN_D_%d.pth' % epoch))
-    D.cuda()
+  
 
-class CelebADataset(Dataset):
-    def __init__(self, h5_path, transform=None):
-        assert (os.path.isfile(h5_path))
-        self.h5_path = h5_path
-        self.transform = transform
-        
-        # loading the dataset into memory
-        f = h5py.File(self.h5_path, "r")
-        key = list(f.keys())
-        print ("key list:", key)
-        self.dataset = f[key[0]]
-        self.dataset = self.dataset[:1000]
-        print ("dataset loaded and its shape:", self.dataset.shape)
-    
-    def __getitem__(self, index):
-        img = self.dataset[index]
-        img = np.transpose(img, (1, 2, 0))
-        if self.transform is not None:
-            img = self.transform(img)
-            
-        return img, 0
-    
-    def __len__(self):
-        return len(self.dataset)
-batch_size =8
-###
-d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_119_maryland.npz')
+#####read data######################
+
 X=d['data']
-#X = np.transpose(X, (0, 2, 3,1))
-
-
-
-#X=np.concatenate(X1,X)
-max_val=np.max(X,1)
-max_val=np.max(max_val,1)
-max_val=np.reshape(max_val,(-1,1,1,3))
+max_val=np.max(X)
+#max_val=np.max(max_val,1)
+#max_val=np.reshape(max_val,(-1,1,1,3))
 X = X/ max_val
 X = X.astype('float64')
-#X=np.clip(X,0,1)
 D=X.shape[1]*X.shape[2]
+####################################
+
+#########calculate-Wavlet###########
+shape = X.shape
+max_lev = 1     # how many levels of decomposition to draw
+label_levels = 3  # how many levels to explicitly label on the plots
 
 
-X_train, X_valid = train_test_split(X, test_size=0.1, random_state=10002,shuffle=False)
-#fig, ax = plt.subplots()
-#im = ax.imshow(X_train[0,:,:,0])
-print(np.mean(X_train[0,:,:,0]))
+fig, axes = plt.subplots(1, 1, figsize=[14, 8])
+c = pywt.wavedec2(X, 'db2', mode='periodization', level=max_lev,axes=(1, 2))
+#c[0] == tuple([np.zeros_like(v) for v in c[0]])
+arr, slices = pywt.coeffs_to_array(c,axes=(1, 2))
+arr[:,0:64,0:64,:]=0
+##plot##
+#axes.imshow(arr[0,:,:,2], cmap=plt.cm.gray)
+#axes.set_title('Coefficients\n({} level)'.format(max_lev))
+#axes.set_axis_off()
+#plt.tight_layout()
 #plt.show()
-X_train = np.transpose(X_train, (0, 3, 1,2))
-X_valid = np.transpose(X_valid , (0, 3, 1,2))
+##ormalize##
+max_val=np.max(arr)
+#arr_final= arr/ np.max(arr)
+###################################
 
-input = torch.from_numpy(X_train).float()
+##########train validation split##########
+batch_size=8
+X_train, X_valid = train_test_split(X, test_size=0.1, random_state=10002,shuffle=False)
+print(np.mean(X_train[0,:,:,0]))
+
+#axes.imshow(X_valid[0,:,:,2], cmap=plt.cm.gray)
+#axes.set_title('Coefficients\n({} level)'.format(max_lev))
+#axes.set_axis_off()
+#plt.tight_layout()
+#plt.show()
+
+c = pywt.wavedec2(X_train, 'db2', mode='periodization', level=max_lev,axes=(1, 2))
+#c[0] == tuple([np.zeros_like(v) for v in c[0]])
+arr, train_slices = pywt.coeffs_to_array(c,axes=(1, 2))
+arr[:,0:64,0:64,:]=0
+X_train_ar = np.transpose(arr, (0, 3, 1,2))
+X_train_ar=X_train_ar/max_val
+
+c = pywt.wavedec2(X_valid, 'db2', mode='periodization', level=max_lev,axes=(1, 2))
+#c[0] == tuple([np.zeros_like(v) for v in c[0]])
+arr, valid_slices = pywt.coeffs_to_array(c,axes=(1, 2))
+arr[:,0:64,0:64,:]=0
+X_valid_ar = np.transpose(arr, (0, 3, 1,2))
+X_valid_ar=X_valid_ar/max_val
+
+input = torch.from_numpy(X_train_ar).float()
 input = input.to('cuda') 
 
-validation_data = torch.from_numpy(X_valid).float()
+validation_data = torch.from_numpy(X_valid_ar).float()
 validation_data = validation_data.to('cuda') 
 
-torch.manual_seed(7)
+X_valid = np.transpose(X_valid, (0, 3, 1,2))
+validation_data_inference = torch.from_numpy(X_valid).float()
+validation_data_inference= validation_data_inference.to('cuda') 
+
+
 train_loader = torch.utils.data.DataLoader(input,
                                            batch_size=batch_size,
                                            shuffle=True)
 Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           batch_size=batch_size,
-                                          shuffle=True)
-#####
+                                          shuffle=False)
 
+
+Validation_loader_inference = torch.utils.data.DataLoader(validation_data_inference,
+                                          batch_size=batch_size,
+                                          shuffle=False)
+                                         
+############################################
+
+
+##########define network##########
 class Encoder(nn.Module):
     def __init__(self, input_channels, output_channels, representation_size = 64):
         super(Encoder, self).__init__()
@@ -254,6 +249,8 @@ class VAE_GAN_Generator(nn.Module):
         rec_images = self.decoder(reparametrized_noise)
         
         return mean, logvar, rec_images
+
+
 class Discriminator(nn.Module):
     def __init__(self, input_channels, representation_size=(256, 16, 16)):  
         super(Discriminator, self).__init__()
@@ -295,53 +292,95 @@ class Discriminator(nn.Module):
         lth_rep = self.lth_features(features.view(batch_size, -1))
         return lth_rep
 
+
+#################################
+
+########## intilaize parameters##########        
 # define constant
 input_channels = 3
 hidden_size = 64
-max_epochs = 99
+max_epochs = 500
 lr = 3e-4
-
 beta = 0
+#########################################
 
-
-G = VAE_GAN_Generator(input_channels, hidden_size).cuda()
+##########call network##########
 D = Discriminator(input_channels).cuda()
+G = VAE_GAN_Generator(input_channels, hidden_size).cuda()
+################################
+
+##########load low res net##########
+G2=VAE_GAN_Generator(input_channels, hidden_size).cuda()
+load_model(98, G2.encoder, G2.decoder)
 
 
-criterion = nn.BCELoss()
-criterion.cuda()
 
+##########define optmizer##########
 opt_enc = optim.Adam(G.parameters(), lr=lr)
 #opt_dec = optim.Adam(G.decoder.parameters(), lr=lr)
-#opt_dis = optim.Adam(D.parameters(), lr=lr * alpha)
+##################################
 
+####initialize low information####
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
 data= next(iter(Validation_loader))
 fixed_batch = Variable(data).cuda()
 
+data= next(iter(Validation_loader_inference))
+fixed_batch_inference= Variable(data).cuda()
+G2.eval()
+with torch.no_grad():
+    mean,logvar,fake_image_rec=G2(fixed_batch_inference )
+
+
+data1=(fixed_batch_inference.data).cpu()
+data1=data1.numpy()
+data1=np.transpose(data1, (0, 2, 3,1))
+#axes.imshow(data1[0,:,:,2], cmap=plt.cm.gray)
+#axes.set_title('Coefficients\n({} level)'.format(max_lev))
+#axes.set_axis_off()
+#plt.tight_layout()
+#plt.show()
+
+data2=(fake_image_rec.data).cpu()
+data2=data2.numpy()
+data2=np.transpose(data2, (0, 2, 3,1))
+
+
+c2 = pywt.wavedec2(data1, 'db2', mode='periodization', level=max_lev,axes=(1, 2))
+arr_low, slices = pywt.coeffs_to_array(c2,axes=(1, 2))
+#axes.imshow(arr[0,:,:,2], cmap=plt.cm.gray)
+#axes.set_title('Coefficients\n({} level)'.format(max_lev))
+#axes.set_axis_off()
+#plt.tight_layout()
+#plt.show()
 
 
 
+c3=pywt.wavedec2(data2, 'db2', mode='periodization', level=max_lev,axes=(1, 2))
+arr_low_rec, slices = pywt.coeffs_to_array(c3,axes=(1, 2))
+
+##################################
+
+
+##########define beta loss##########
 def MSE_loss(Y, X):
     ret = (X- Y) ** 2
     ret = torch.sum(ret,1)
     return ret 
-def BMSE_loss(Y, X, beta,sigma,Dim):
+def BMSE_loss(Y, X, beta,sigma,D):
     term1 = -((1+beta) / beta)
-    K1=1/pow((2*math.pi*( sigma** 2)),(beta*Dim/2))
+    K1=1/pow((2*math.pi*( sigma** 2)),(beta*D/2))
     term2=MSE_loss(Y, X)
     term3=torch.exp(-(beta/(2*( sigma** 2)))*term2)
     loss1=torch.sum(term1*(K1*term3-1))
     return loss1
 
-
 # Reconstruction + KL divergence losses summed over all elements and batch
 def beta_loss_function(recon_x, x, mu, logvar, beta):
 
     if beta > 0:
-        sigma=1
         # If beta is nonzero, use the beta entropy
-        BBCE = BMSE_loss(recon_x.view(-1, 128*128*3), x.view(-1, 128*128*3), beta,sigma,128*128*3)
+        BBCE = BMSE_loss(recon_x.view(-1, 128*128*3), x.view(-1, 128*128*3), beta,sigma,D)
     else:
         # if beta is zero use binary cross entropy
         BBCE = torch.sum(MSE_loss(recon_x.view(-1, 128*128*3),x.view(-1, 128*128*3)))
@@ -351,58 +390,82 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
     return BBCE +KLD
 
-if pret==1:
-    load_model(499, G.encoder, G.decoder, D)
+#if pret==1:
+    #load_model(499, G.encoder, G.decoder, D)
+
+#####################################
 
 
-train_loss=0
-valid_loss=0
-valid_loss_list, train_loss_list= [], []
+##########train model##########
 for epoch in range(max_epochs):
-    train_loss=0
-    valid_loss=0
     for data in train_loader:
         batch_size = data.size()[0]
-
+        
         #print (data.size())
         datav = Variable(data).cuda()
-        #datav[l2,:,row2:row2+5,:]=0
-
         mean, logvar, rec_enc = G(datav)
+        # train decoder
         beta_err=beta_loss_function(rec_enc, datav, mean, logvar,beta) 
         err_enc = beta_err
         opt_enc.zero_grad()
         err_enc.backward()
         opt_enc.step()
-        train_loss+=beta_err.item()
-    train_loss /= len(train_loader.dataset)
-
-
-
-    G.eval()
-    with torch.no_grad():
-        for data in Validation_loader:
-            data = Variable(data).cuda()
-            mean,logvar, valid_rec = G(data)
-            beta_err=beta_loss_function(valid_rec, data, mean, logvar,beta) 
-            valid_loss+=beta_err.item()
-        valid_loss /= len(Validation_loader.dataset)
-
+        
+        
     
-    print(valid_loss)
-    train_loss_list.append(train_loss)
-    valid_loss_list.append(valid_loss)
+    print(beta_err)
     _, _, rec_imgs = G(fixed_batch)
-    show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]).cpu(),8))
-    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[:,2:3,:,:]).cpu(),8))
-    samples = G.decoder(fixed_noise)
-    show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[:,2:3,:,:]).cpu(),8))
-    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]-rec_imgs.data[:,2:3,:,:]).cpu(),8))
+    rec_img=rec_imgs.cpu()
+    rec_img=rec_img.detach().numpy()
+    rec_img_org=np.transpose(rec_img, (0, 2, 3,1))*max_val
+    rec_img_org[:,0:64,0:64,:]=arr_low_rec[:,0:64,0:64,:]
+    rec_img_org=pywt.array_to_coeffs(rec_img_org,valid_slices,output_format='wavedec2')
+    #rec_img_org[0] == c3[0]
+    
+    rec_img_org=pywt.waverec2(rec_img_org, 'db2', mode='periodization',axes=(1, 2))
+    rec_img_org=np.transpose(rec_img_org, (0, 3, 1,2))
+    rec_img_org=torch.from_numpy(rec_img_org).float()
 
-    #localtime = time.asctime( time.localtime(time.time()) )
-    #D_real_list_np=(D_real_list).to('cpu')
-save_model(epoch, G.encoder, G.decoder, D)    
-plt.plot(train_loss_list, label="train loss")
-plt.plot(valid_loss_list, label="validation loss")
-plt.legend()
-plt.show()  
+    fixed_batch_img=fixed_batch.cpu()
+    fixed_batch_img=fixed_batch_img.detach().numpy()
+    fixed_batch_img_org=np.transpose(fixed_batch_img, (0, 2, 3,1))*max_val
+    fixed_batch_img_org[:,0:64,0:64,:]=arr_low[:,0:64,0:64,:]
+    fixed_batch_img_org=pywt.array_to_coeffs(fixed_batch_img_org,valid_slices,output_format='wavedec2')
+    #fixed_batch_img_org[0] == c2[0]
+
+    #arr, slices = pywt.coeffs_to_array(fixed_batch_img_org,axes=(1, 2))
+    #axes.imshow(arr[0,:,:,2], cmap=plt.cm.gray)
+    #axes.set_title('Coefficients\n({} level)'.format(max_lev))
+    #axes.set_axis_off()
+    #plt.tight_layout()
+    #plt.show()
+
+    fixed_batch_img_org=pywt.waverec2(fixed_batch_img_org, 'db2', mode='periodization',axes=(1, 2))
+    #axes.imshow(fixed_batch_img_org[0,:,:,2], cmap=plt.cm.gray)
+    #axes.set_title('Coefficients\n({} level)'.format(max_lev))
+    #axes.set_axis_off()
+    #plt.tight_layout()
+    #plt.show()
+    
+
+
+
+    fixed_batch_img_org=np.transpose(fixed_batch_img_org, (0, 3, 1,2))
+    fixed_batch_img_org=torch.from_numpy(fixed_batch_img_org).float()
+
+
+    show_and_save('Input_epoch_wave_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]).cpu(),8))
+    show_and_save('rec_epoch_wave_%d.png' % epoch ,make_grid((rec_imgs.data[:,2:3,:,:]).cpu(),8))
+    samples = G.decoder(fixed_noise)
+    show_and_save('samples_epoch_wave_%d.png' % epoch ,make_grid((samples.data[:,2:3,:,:]).cpu(),8))
+    show_and_save('Error_wave_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]-rec_imgs.data[:,2:3,:,:]).cpu(),8))
+
+
+    show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch_img_org.data[:,2:3,:,:]).cpu(),8))
+    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_img_org.data[:,2:3,:,:]).cpu(),8))
+    samples = G.decoder(fixed_noise)
+    #show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[:,2:3,:,:]).cpu(),8))
+    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch_img_org.data[:,2:3,:,:]-rec_img_org.data[:,2:3,:,:]).cpu(),8))
+
+##########save model###########
+save_model(epoch, G.encoder, G.decoder)    

@@ -34,12 +34,22 @@ X = d['data']
 
 if __name__ == "__main__":
 
-    y_true = X[0:(15*20), :, :, 3]
+    y_true = X[0:25, :, :, 3]
     y_true = np.reshape(y_true, (-1, 1))
     
-    y_probas = X[0:(15*20), :, :, 2]
+    y_probas = X[0:25, :, :, 2]
+    y_probas = np.reshape(y_probas, (-1, 1,128,128))
+
     y_probas =y_probas /np.max(y_probas)
+    #y_probas=scipy.signal.medfilt(y_probas,(1,1,7,7))
+
     y_probas = np.reshape(y_probas, (-1, 1))
+
+
+    #y_true=y_true[y_probas!=0]
+    #y_probas=y_probas[y_probas!=0]
+
+
     y_true = y_true.astype(int)
 
     print(np.min(y_probas))
@@ -47,13 +57,13 @@ if __name__ == "__main__":
     y_probas = np.clip(y_probas, 0, 1)
  
     
-    y_probas = np.reshape(y_probas, (-1, 1,128,128))
-    y_probas=scipy.signal.medfilt(y_probas,(1,1,7,7))
-    y_probas = np.reshape(y_probas, (-1, 1))
+  
+    #y_probas = np.reshape(y_probas, (-1, 1))
     
     fpr, tpr, th= metrics.roc_curve(y_true, y_probas)
     L=fpr/tpr
-    best_th=th[tpr>=0.5]
+    best_th=th[fpr<0.01]
+    print(best_th[-2])
     auc = metrics.auc(fpr, tpr)
     plt.plot(fpr, tpr, label="data 1, auc=" + str(auc))
     plt.legend(loc=4)
@@ -61,8 +71,8 @@ if __name__ == "__main__":
     
     #np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/y_probas_VAE_notcons.npz', data=y_probas)
     #np.savez('/big_disk/akrami/git_repos/lesion-detector/src/VAE/y_true_VAE.npz', data=y_true)
-    y_probas[y_probas >=0.7]=1
-    y_probas[y_probas <0.7]=0
+    y_probas[y_probas >best_th[-1]]=1
+    y_probas[y_probas <best_th[-1]]=0
 
     y_probas = np.reshape(y_probas, (-1,128*128*20))
     y_true = np.reshape(y_true, (-1,128*128*20))
