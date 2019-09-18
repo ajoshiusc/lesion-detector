@@ -22,7 +22,6 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from sklearn import metrics
 import scipy.signal
-from sklearn.model_selection import train_test_split
 import random
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
@@ -289,7 +288,7 @@ device='cuda'
 #########################################
 epoch=399
 #HM='/big_disk/akrami/git_repos/lesion-detector/src/VAE_GANs/figs'
-LM='/big_disk/akrami/git_repos/lesion-detector/src/VAE_GANs/results_RVAE/figs9'
+LM='/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/figs_VAE'
 ##########call network##########
 #D = Discriminator(input_channels).cuda()
 #G = VAE_GAN_Generator(input_channels, hidden_size).cuda()
@@ -402,7 +401,7 @@ def Validation(X):
                     seg_all.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'results5/reconstruction_b' +str(i)+ '.png',
+                           'result_VAE_org/reconstruction_bs' +str(i)+ '.png',
                            nrow=n)
 
             if i==0:

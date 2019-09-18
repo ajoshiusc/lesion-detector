@@ -74,7 +74,7 @@ X=d['data']
 max_val=np.max(X)
 max_val=np.max(max_val)
 #max_val=np.reshape(max_val,(-1,1,1,3))
-X = X/ max_val
+#X = X/ max_val
 
 X = X.astype('float64')
 D=X.shape[1]*X.shape[2]*X.shape[3]

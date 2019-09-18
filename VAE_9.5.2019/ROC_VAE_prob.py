@@ -312,7 +312,7 @@ def Validation(X):
                 save_image(comparison.cpu(),
                            'result_VAE_prob_valid/reconstruction_b' +str(i)+ '.png',
                            nrow=n)
-            print(torch.max(f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n])/sig_plot.view(batch_size, 1, 128, 128)[:n]))
+            #print(torch.max(f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n])/sig_plot.view(batch_size, 1, 128, 128)[:n]))
             if i==0:
                 rec_error_all = err+0
             else:
