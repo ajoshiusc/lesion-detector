@@ -12,7 +12,7 @@ from keras.losses import mse
 import nilearn.image as ni
 
 ERODE_SZ = 1
-DO_TRAINING = 0
+DO_TRAINING = 1
 
 data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1'
 tbi_done_list = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt'
