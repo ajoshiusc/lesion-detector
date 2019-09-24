@@ -25,8 +25,8 @@ random.seed(8)
 
             
 def show_and_save(file_name,img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob_notnorm/%s.png" % file_name
-    save_image(img[2:3,:,:],f)
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_hiseq/%s.png" % file_name
+    save_image(img[2:3,:,:],f,range=[0,1.5])
     
     #fig = plt.figure(dpi=300)
     #fig.suptitle(file_name, fontsize=14, fontweight='bold')
@@ -49,28 +49,29 @@ def load_model(epoch, encoder, decoder):
     
 
 
-batch_size =8
-###
-d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_119_maryland.npz')
+batch_size =2
+d=np.load('data__maryland_histeq.npz')
 X=d['data']
 #X = np.transpose(X, (0, 2, 3,1))
 
-max_val=np.max(X)
+#max_val=np.max(X)
 #max_val=np.max(max_val,1)
 #max_val=np.reshape(max_val,(-1,1,1,3))
-X = X/ max_val
+#X = X/ max_val
 X = X.astype('float64')
 #X=np.clip(X,0,1)
 D=X.shape[1]*X.shape[2]
-
-
+print(np.min(X))
+X=X[0:2380,:,:,:]
 X_train, X_valid = train_test_split(X, test_size=0.1, random_state=10002,shuffle=False)
+
 #fig, ax = plt.subplots()
 #im = ax.imshow(X_train[0,:,:,0])
-print(np.mean(X_train[0,:,:,0]))
+print(np.mean(X_valid[:,:,:,0]))
 #plt.show()
 X_train = np.transpose(X_train, (0, 3, 1,2))
 X_valid = np.transpose(X_valid , (0, 3, 1,2))
+
 
 input = torch.from_numpy(X_train).float()
 input = input.to('cuda') 
@@ -228,7 +229,7 @@ beta = 0
 
 
 G = VAE_Generator(input_channels, hidden_size).cuda()
-opt_enc = optim.Adam(G.parameters(), lr=lr)
+opt_enc = optim.Adam(G.parameters(), lr=lr, weight_decay=0.001)
 
 
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
@@ -338,11 +339,12 @@ for epoch in range(max_epochs):
     train_loss_list.append(train_loss)
     valid_loss_list.append(valid_loss)
     _, _, rec_imgs,var_img = G(fixed_batch)
-    show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]).cpu(),8))
-    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
+  
+    show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]).cpu(),batch_size,range=[0,1.5]))
+    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[0:batch_size,2:3,:,:]).cpu(),batch_size))
     #samples = G.decoder(fixed_noise)
     #show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[0:8,2:3,:,:]).cpu(),8))
-    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:8,2:3,:,:]-rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
+    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:batch_size,2:3,:,:]-rec_imgs.data[0:batch_size,2:3,:,:]).cpu(),batch_size))
 
     #localtime = time.asctime( time.localtime(time.time()) )
     #D_real_list_np=(D_real_list).to('cpu')

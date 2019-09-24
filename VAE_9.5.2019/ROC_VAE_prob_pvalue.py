@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import scipy.signal
 from VAE_model_pixel import Encoder,Decoder,VAE_Generator
 import scipy.stats as st
+from sklearn import metrics
 
 pret=0
 
@@ -36,12 +37,12 @@ def load_model(epoch, encoder, decoder, loc):
   
 
 #####read data######################
-d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_24_ISEL.npz')
+d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data_24_ISEL_histeq.npz')
 X = d['data']
 
 X_data = X[0:15*20, :, :, 0:3]
-max_val=np.max(X)
-X_data = X_data/ max_val
+#max_val=np.max(X)
+#X_data = X_data/ max_val
 X_data = X_data.astype('float64')
 X_valid=X_data[:,:,:,:]
 D=X_data.shape[1]*X_data.shape[2]
@@ -75,8 +76,8 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob'
+epoch=21
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_hiseq'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -113,9 +114,11 @@ def Validation(X):
     with torch.no_grad():
         for i, data in enumerate(Validation_loader_inference):
             data = (data).to(device)
-            seg = X[ind:ind + batch_size, :, :, 3]
+            seg = X[ind:ind + batch_size, :, :, 3:4]
             ind = ind + batch_size
+            seg=seg.astype('float32')
             seg = torch.from_numpy(seg)
+            
             seg = (seg).to(device)
             mean, logvar, rec_enc, var_enc = G(data)
 
@@ -147,7 +150,9 @@ def Validation(X):
                 median=1-st.norm.sf(abs(median))*2
                 
                 median=scipy.signal.medfilt(median,(1,1,7,7))
-                median[median<0.999999999]=0
+                scale=0.05
+                median[median<1-scale]=0
+                #median=1-median
                 median=median.astype('float32')
                 err_rec=torch.from_numpy(median)
                 err_rec=(err_rec).to(device)
@@ -155,12 +160,13 @@ def Validation(X):
                 comparison = torch.cat([
                     f_data.view(batch_size, 1, 128, 128)[:n],
                     f_recon_batch.view(batch_size, 1, 128, 128)[:n],
+                    (f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n]),
                     sig_plot.view(batch_size, 1, 128, 128)[:n],
                     err_rec.view(batch_size, 1, 128, 128)[:n],
                     seg.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'result_VAE_prob_pvalue/reconstruction_b' +str(i)+ '.png',
+                           'VAE_hiseq/reconstruction_b' +str(i)+ '.png',
                            nrow=n)
            #############save z values###############
             if i==0:
@@ -176,15 +182,31 @@ if __name__ == "__main__":
     rec_error_all = Validation(X)
     y_true = X[0:15*20 ,:, :, 3]
     y_true = np.reshape(y_true, (-1, 1))
-    
+    y_true = y_true.astype(int)
+
     y_probas = (rec_error_all).to('cpu')
     y_probas = y_probas.numpy()
     
     y_probas =np.reshape(y_probas, (-1, 1,128,128))
-    y_probas=st.norm.sf(abs(y_probas))*2
-    median=scipy.signal.medfilt(y_probas,(1,1,7,7))
-    median=median.astype('float32')
-               
+    median=1-((st.norm.sf(abs(y_probas))*2)/(128*128))
+
+    #scale=0.05/(128*128)
+    median=scipy.signal.medfilt(median,(1,1,7,7))
+  
+
+
+
+    y_probas = np.reshape(median, (-1, 1))
+    print(np.max(y_probas))
+    print(np.min(y_probas))
+    
+    fpr, tpr, th= metrics.roc_curve(y_true, y_probas)
+    L=fpr/tpr
+    #best_th=th[tpr>=0.5]
+    auc = metrics.auc(fpr, tpr)
+    plt.plot(fpr, tpr, label="data 1, auc=" + str(auc))
+    plt.legend(loc=4)
+    plt.show()           
             
     y_probas=median+0
     y_probas[y_probas >0]=1

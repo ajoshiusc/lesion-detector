@@ -66,15 +66,16 @@ def load_model(epoch, encoder, decoder, loc):
   
 
 #####read data######################
-d=np.load('/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/data_119_maryland.npz')
+d=np.load('data__maryland_histeq.npz')
 X=d['data']
 
 #X_data = X[:, :, :, 0:3]
-max_val=np.max(X)
+#max_val=np.max(X)
 #max_val=np.max(max_val,1)
 #max_val=np.reshape(max_val,(-1,1,1,3))
-X = X/ max_val
+#X = X/ max_val
 X= X.astype('float64')
+X=X[0:2380,:,:,:]
 X_train, X_valid = train_test_split(X, test_size=0.1, random_state=10002,shuffle=False)
 X=X_valid
 D=X.shape[1]*X.shape[2]
@@ -108,8 +109,8 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/result_VAE_prob'
+epoch=21
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_hiseq'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -181,6 +182,7 @@ def Validation(X):
             sig_plot=((std_all**(0.5))[:,2,:,:])
             z_value=(f_data-f_recon_batch)/sig_plot
             
+            
             if i<200:
                 n = min(f_data.size(0), 100)
                 err_rec=(z_value.view(batch_size,1, 128, 128)[:n])
@@ -207,7 +209,7 @@ def Validation(X):
                     seg_all.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'result_VAE_prob_pvalue/reconstruction_bs' +str(i)+ '.png',
+                           'VAE_hiseq/reconstruction_bst' +str(i)+ '.png',
                            nrow=n)
            #############save z values###############
             if i==0:
@@ -228,7 +230,9 @@ if __name__ == "__main__":
     y_probas = y_probas.numpy()
     
     y_probas =np.reshape(y_probas, (-1, 1,128,128))
-    y_probas=st.norm.sf(abs(y_probas))*2
+    median=1-st.norm.sf(abs(y_probas))*2
+    median=median/(128*128)
+    #scale=0.05/(128*128)
     median=scipy.signal.medfilt(y_probas,(1,1,7,7))
     median=median.astype('float32')
                

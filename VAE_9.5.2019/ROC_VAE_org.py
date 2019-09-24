@@ -322,9 +322,9 @@ def Validation(X):
 
             f_data = data[:, 2, :, :]
             #f_recon_batch = f_recon_batch[:, 2, :, :]
-            rec_error = (f_data - f_recon_batch)
+            rec_error = torch.abs(f_data - f_recon_batch)
             #rec_error=torch.mean(rec_error,1)
-            if i<200:
+            if i<2:
                 n = min(f_data.size(0), 100)
                 err=(f_data.view(batch_size,1, 128, 128)[:n] -
                      f_recon_batch.view(batch_size,1, 128, 128)[:n])
