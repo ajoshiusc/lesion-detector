@@ -33,7 +33,7 @@ def MNIST_reshape():
    np.save('x_test', x_test)
    return()
 
-def TBI():
+def maryland():
    d=np.load('data__maryland_histeq.npz')
    data=d['data']
    for i in range(data.shape[0]):
@@ -58,11 +58,25 @@ def ISEL():
          X=np.append(X,temp ,axis=0)
    return X
 
+def TBI():
+   d=np.load('data__TBI_histeq.npz')
+   data=d['data']
+   data=data[0:3120,:,:,:]
+   for i in range(data.shape[0]):
+      if i==0:
+         X= cv2.resize(data[i,:,:,:], dsize=(128, 128), interpolation=cv2.INTER_CUBIC)
+         X=X.reshape((1,128,128,3))
+      else:
+         temp=cv2.resize(data[i,:,:,:], dsize=(128, 128), interpolation=cv2.INTER_CUBIC) 
+         temp=temp.reshape((1,128,128,3))
+         X=np.append(X,temp ,axis=0)
+   return X
+
 if __name__ == "__main__":
    X_r=TBI()
    fig, ax = plt.subplots()
    im = ax.imshow(X_r[0,:,:,0])
    plt.show()
-np.savez('data__maryland_histeq.npz', data=X_r)       
+np.savez('data__TBI_histeq.npz', data=X_r)       
 
 

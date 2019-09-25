@@ -7,8 +7,8 @@ from datautils_VAE import read_data, read_data_test,datalist, read_data_brats
 
 
 def train_save():
-    data_dir = '/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/'
-    with open('/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1_done.txt') as f:
+    data_dir = '/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot/'
+    with open('/big_disk/ajoshi/fitbir/preproc/tracktbi_pilot_done.txt') as f:
         tbidoneIds = f.readlines()
     tbidoneIds = [l.strip('\n\r') for l in tbidoneIds]
     ref_dir='/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVNU820VND'
@@ -19,7 +19,7 @@ def train_save():
     data = read_data(study_dir=data_dir,
                                        ref_dir=ref_dir,
                                        subids=tbidoneIds,
-                                       nsub=181,
+                                       nsub=253,
                                        psize=[window_H, window_W],
                                        npatch_perslice=1,
                                        slicerange=slicerange,
@@ -41,7 +41,7 @@ def train_save():
 
 
     #np.random.shuffle(data)
-    np.savez('data__maryland_histeq.npz', data=data)
+    np.savez('data__TBI_histeq.npz', data=data)
 
 
 def test_save():
@@ -105,4 +105,5 @@ def Brats2015_save(data_files):
 #np.random.shuffle(data)
 if __name__ == "__main__":
     #datalist('/ImagePTE1/ajoshi/BRATS2015_Training/HGG/')
-    Brats2015_save('Brats2015.txt')
+    #Brats2015_save('Brats2015.txt')
+    train_save()

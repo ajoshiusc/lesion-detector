@@ -76,7 +76,7 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=21
+epoch=18
 LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_hiseq'
 
 ##########load low res net##########
@@ -97,7 +97,7 @@ def prob_loss_function(recon_x,var_x, x, mu, logvar):
     term1=torch.sum((((recon_x-x_temp)/std)**2),(1, 2,3))
     prob_term=const+(-(0.5)*term1)
     
-    BBCE=torch.sum(prob_term/10)
+    BBCE=torch.sum(prob_term)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
@@ -150,7 +150,7 @@ def Validation(X):
                 median=1-st.norm.sf(abs(median))*2
                 
                 median=scipy.signal.medfilt(median,(1,1,7,7))
-                scale=0.05
+                scale=0.05/(128*128)
                 median[median<1-scale]=0
                 #median=1-median
                 median=median.astype('float32')
