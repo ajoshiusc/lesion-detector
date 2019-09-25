@@ -234,9 +234,9 @@ beta = 0
 
 
 G = VAE_Generator(input_channels, hidden_size).cuda()
-opt_enc = optim.Adam(G.parameters(), lr=lr, weight_decay=0.01)
+opt_enc = optim.Adam(G.parameters(), lr=lr)
 
-
+#weight_decay=0.01
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
 data= next(iter(Validation_loader))
 fixed_batch = Variable(data).cuda()
@@ -283,7 +283,7 @@ def prob_loss_function(recon_x,var_x, x, mu, logvar):
     #const=const.repeat(10,1,1,1) ##check if it is correct
     x_temp=x.repeat(10,1,1,1)
     term1=torch.sum((((recon_x-x_temp)/std)**2),(1, 2,3))
-    const2=-((128*128*3)/2)*torch.log((2*math.pi)* const)
+    const2=-(((128*128*3)/2)*math.log(2*math.pi)+0.5*torch.log(const))
     
  
     #term2=torch.log(const+0.0000000000001)
