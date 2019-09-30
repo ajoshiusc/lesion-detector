@@ -369,34 +369,12 @@ def read_data_brats(study_dir,
         
     for subj in subids:
 
-        ####T2####
-        t2_dir = os.path.join(study_dir, subj)
-        for subdir in os.listdir(t2_dir):
-            if fnmatch.fnmatch(subdir, 'VSD.Brain.XX.O.MR_T2'+'*'):
-                t2_file = os.path.join(study_dir, subj,subdir+'/'+subdir+'.mha')
-        
-        ####T1####
-        t1_dir = os.path.join(study_dir, subj)
-        for subdir in os.listdir(t1_dir):
-            if fnmatch.fnmatch(subdir, 'VSD.Brain.XX.O.MR_T1.'+'*'):
-                t1_file = os.path.join(study_dir, subj,subdir+'/'+subdir+'.mha')
+        t1_file = os.path.join(study_dir, subj, 'T1.nii.gz')
+        #t1_mask_file = os.path.join(study_dir, subj, 'T1mni.mask.nii.gz')
+        t2_file = os.path.join(study_dir, subj, 'T2.nii.gz')
+        flair_file = os.path.join(study_dir, subj, 'Flair.nii.gz')
+        seg = os.path.join(study_dir, subj, 'truth.nii.gz')
 
-        ####FLAIR####
-        flair_dir = os.path.join(study_dir, subj)
-        for subdir in os.listdir(flair_dir):
-            if fnmatch.fnmatch(subdir, 'VSD.Brain.XX.O.MR_Flair'+'*'):
-                flair_file = os.path.join(study_dir, subj,subdir+'/'+subdir+'.mha')
-
-        ####Segmentation####
-        seg_dir = os.path.join(study_dir, subj)
-        for subdir in os.listdir(seg_dir):
-            if fnmatch.fnmatch(subdir, 'VSD.Brain_3more.XX.XX.OT'+'*'):
-                seg_file = os.path.join(study_dir, subj,subdir+'/'+subdir+'.mha')
-        
-
-        
-    
-        
         if not (os.path.isfile(t1_file)
                 and os.path.isfile(t2_file) and os.path.isfile(flair_file)):
             continue
@@ -410,13 +388,18 @@ def read_data_brats(study_dir,
         t1 = nl.image.load_img(t1_file).get_data()
         t2 = nl.image.load_img(t2_file).get_data()
         flair = nl.image.load_img(flair_file).get_data()
-        segment = nl.image.load_img(seg_file).get_data()
-
-
+        segment = nl.image.load_img(seg).get_data()
         t1_msk = nl.image.load_img(t1_file).get_data()
         t1_msk[t1_msk!=0]=1
 
-        
+                #p = np.percentile(np.ravel(t1), 99)  #normalize to 95 percentile
+        #t1 = np.float32(t1) / p
+
+        #p = np.percentile(np.ravel(t2), 99)  #normalize to 95 percentile
+        #t2 = np.float32(t2) / p
+
+        #p = np.percentile(np.ravel(flair), 99)  #normalize to 95 percentile
+        #flair = np.float32(flair) / p
         #t1_msk = binary_erosion(t1_msk, iterations=erode_sz)
 
         imgs = np.stack((t1, t2, flair), axis=3)
@@ -491,6 +474,7 @@ def read_data_brats(study_dir,
     #mask_data = patch_data[:, :, :, -1]
     patch_data = patch_data[:, :, :, :]
     return patch_data  # npatch x width x height x channels
+
 
 
 def slice2vol_pred(model_pred, vol_data, mask_data, im_size, step_size=32):

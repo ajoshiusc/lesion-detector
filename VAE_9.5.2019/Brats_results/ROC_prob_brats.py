@@ -23,6 +23,7 @@ import scipy.signal
 from VAE_model_pixel import Encoder,Decoder,VAE_Generator
 import scipy.stats as st
 from sklearn import metrics
+from sklearn.model_selection import train_test_split
 
 pret=0
 
@@ -37,38 +38,31 @@ def load_model(epoch, encoder, decoder, loc):
   
 
 #####read data######################
-d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data_24_ISEL_histeq.npz')
-X = d['data']
+d=np.load('Brats2015_HGG.npz')
+X=d['data']
+X=X[:,:,:,0:3]
+X_data = X.astype('float64')
 
-X_data = X[0:15*20, :, :, 0:3]
-#max_val=np.max(X)
-#X_data = X_data/ max_val
-X_data = X_data.astype('float64')
-X_valid=X_data[:,:,:,:]
-D=X_data.shape[1]*X_data.shape[2]
-####################################
+X_train, X_valid = train_test_split(X_data, test_size=0.2, random_state=10002,shuffle=False)
+X_valid,X_test=train_test_split(X_valid, test_size=0.5, random_state=10001,shuffle=False)
+X_train = np.transpose(X_train, (0, 3, 1,2))
+X_valid = np.transpose(X_valid , (0, 3, 1,2))
+X_test = np.transpose(X_test , (0, 3, 1,2))
 
 
 
-##########train validation split##########
+validation_data = torch.from_numpy(X_test).float()
+
 batch_size=8
 
 
-X_valid = np.transpose(X_valid, (0, 3, 1,2))
-validation_data_inference = torch.from_numpy(X_valid).float()
-validation_data_inference= validation_data_inference.to('cuda') 
+torch.manual_seed(7)
 
-
-Validation_loader_inference = torch.utils.data.DataLoader(validation_data_inference,
+Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           batch_size=batch_size,
-                                          shuffle=False)
-                                         
+                                          shuffle=True)
 ############################################
 
-
-
-########## intilaize parameters##########        
-# define constant
 input_channels = 3
 hidden_size = 64
 max_epochs = 200
@@ -76,8 +70,8 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=35
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_hiseq'
+epoch=19
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -164,7 +158,7 @@ def Validation(X):
                     seg.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'VAE_hiseq/reconstruction_b' +str(i)+ '.png',
+                           'Brats_results/reconstruction_b' +str(i)+ '.png',
                            nrow=n)
            #############save z values###############
             if i==0:
@@ -221,3 +215,4 @@ if __name__ == "__main__":
         #print((dice))
     print((dice)/y_probas.shape[0])
     
+

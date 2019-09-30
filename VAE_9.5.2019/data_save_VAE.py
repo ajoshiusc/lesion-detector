@@ -74,7 +74,7 @@ def test_save():
 
 
 def Brats2015_save(data_files):
-    data_dir = '/ImagePTE1/ajoshi/BRATS2015_Training/HGG/'
+    data_dir = '/ImagePTE1/ajoshi/BRATS2015_Training_preprocessed/HGG/'
     ref_dir='/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/TBI_INVNU820VND'
     #study_dir ='/big_disk/ajoshi/fitbir/preproc/maryland_rao_v1/'
     with open(data_files) as f:
@@ -86,24 +86,24 @@ def Brats2015_save(data_files):
     data = read_data_brats(study_dir=data_dir,
                                        ref_dir=ref_dir,
                                        subids=tbidoneIds,
-                                       nsub=24,
+                                       nsub=220,
                                        psize=[window_H, window_W],
                                        npatch_perslice=1,
                                        slicerange=slicerange,
                                        erode_sz=0,
                                        lesioned=False,
-                                       dohisteq=False
+                                       dohisteq=True
                                        )
     #data=data[:,:,81:101]
     fig, ax = plt.subplots()
     im = ax.imshow(data[0, :, :, 0])
     plt.show()
-    np.savez('Brats2015.npz', data=data)
+    np.savez('Brats2015_HGG.npz', data=data)
     return ()
 
 
 #np.random.shuffle(data)
 if __name__ == "__main__":
     #datalist('/ImagePTE1/ajoshi/BRATS2015_Training/HGG/')
-    #Brats2015_save('Brats2015.txt')
-    train_save()
+    Brats2015_save('Brats2015.txt')
+    #Brats2015_save()

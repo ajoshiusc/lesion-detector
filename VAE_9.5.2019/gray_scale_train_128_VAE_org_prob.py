@@ -63,7 +63,7 @@ X = X.astype('float64')
 D=X.shape[1]*X.shape[2]
 print(np.min(X))
 X=X[0:2380,:,:,:]
-batch_size =8
+batch_size =16
 
 
 d=np.load('data__TBI_histeq.npz')
@@ -234,9 +234,9 @@ beta = 0
 
 
 G = VAE_Generator(input_channels, hidden_size).cuda()
-opt_enc = optim.Adam(G.parameters(), lr=lr)
+opt_enc = optim.Adam(G.parameters(), lr=lr, weight_decay=0.01)
 
-#weight_decay=0.01
+
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
 data= next(iter(Validation_loader))
 fixed_batch = Variable(data).cuda()
@@ -275,19 +275,19 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
 def prob_loss_function(recon_x,var_x, x, mu, logvar):
     
-    var_x=var_x+0.0000000000001
+    var_x=var_x
     std = var_x.mul(0.5).exp_()
-    std=std+0.0000000000001
+    std=std
     #std_all=torch.prod(std,dim=1)
-    const=(torch.sum((std**2),(1,2,3)))
+    const=(-torch.sum(var_x,(1,2,3)))/2
     #const=const.repeat(10,1,1,1) ##check if it is correct
     x_temp=x.repeat(10,1,1,1)
     term1=torch.sum((((recon_x-x_temp)/std)**2),(1, 2,3))
-    const2=-(((128*128*3)/2)*math.log(2*math.pi)+0.5*torch.log(const))
+    const2=-((128*128*3)/2)*math.log((2*math.pi))
     
  
     #term2=torch.log(const+0.0000000000001)
-    prob_term=const2+(-(0.5)*term1)
+    prob_term=const+(-(0.5)*term1)+const2
     
     BBCE=torch.sum(prob_term/10)
 
@@ -345,15 +345,17 @@ for epoch in range(max_epochs):
     valid_loss_list.append(valid_loss)
     _, _, rec_imgs,var_img = G(fixed_batch)
   
-    show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[:,2:3,:,:]).cpu(),8,range=[0,1.5]))
-    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[0:batch_size,2:3,:,:]).cpu(),8))
+    show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:8,2:3,:,:]).cpu(),8,range=[0,1.5]))
+    show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
     #samples = G.decoder(fixed_noise)
     #show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[0:8,2:3,:,:]).cpu(),8))
-    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:batch_size,2:3,:,:]-rec_imgs.data[0:batch_size,2:3,:,:]).cpu(),8))
+    show_and_save('Error_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:8,2:3,:,:]-rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
 
     #localtime = time.asctime( time.localtime(time.time()) )
     #D_real_list_np=(D_real_list).to('cpu')
-#save_model(epoch, G.encoder, G.decoder)    
+#save_model(epoch, G.encoder, G.decoder) 
+# 
+save_model(epoch, G.encoder, G.decoder)   
 plt.plot(train_loss_list, label="train loss")
 plt.plot(valid_loss_list, label="validation loss")
 plt.legend()
