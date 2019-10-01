@@ -26,7 +26,7 @@ random.seed(8)
 
 
 def show_and_save(file_name, img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE/%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -42,12 +42,13 @@ def save_model(epoch, encoder, decoder):
     encoder.cuda()
 
 
-def load_model(epoch, encoder, decoder):
+def load_model(epoch, encoder, decoder, loc):
     #  restore models
-    decoder.load_state_dict(torch.load('./VAE_GAN_decoder_%d.pth' % epoch))
+    decoder.load_state_dict(torch.load(loc+'/VAE_GAN_decoder_%d.pth' % epoch))
     decoder.cuda()
-    encoder.load_state_dict(torch.load('./VAE_GAN_encoder_%d.pth' % epoch))
+    encoder.load_state_dict(torch.load(loc+'/VAE_GAN_encoder_%d.pth' % epoch))
     encoder.cuda()
+  
 
 
 d = np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats2015_HGG.npz')
@@ -80,10 +81,15 @@ input_channels = 3
 hidden_size = 64
 max_epochs = 100
 lr = 3e-4
-beta = 0
+beta = 0.00000001
 
 #######network################
-G = VAE_Generator(input_channels, hidden_size).cuda()
+epoch=31
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
+
+##########load low res net##########
+G=VAE_Generator(input_channels, hidden_size).cuda()
+load_model(epoch,G.encoder, G.decoder,LM)
 opt_enc = optim.Adam(G.parameters(), lr=lr)
 
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
@@ -153,10 +159,13 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
 
 def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
-
+    x_temp = x.repeat(10, 1, 1, 1)
     std = logvar_x.mul(0.5).exp_()
     # dim=(128*128*3)
-    std_all = torch.prod(std, dim=(1, 2, 3))
+    std_all = torch.prod(std, dim=1)
+    std_all = torch.prod(std_all, dim=1)
+    std_all = torch.prod(std_all, dim=1)+1e-6 
+    
     term1 = -(beta + 1) / (beta * torch.pow((std_all * (2 * math.pi)),
                                             (beta / 2)))
     term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))

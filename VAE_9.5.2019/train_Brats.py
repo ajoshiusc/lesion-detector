@@ -26,7 +26,7 @@ random.seed(8)
 
             
 def show_and_save(file_name,img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_mask/%s.png" % file_name
     save_image(img[2:3,:,:],f,range=[0,1.5])
     
     #fig = plt.figure(dpi=300)
@@ -126,14 +126,14 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
 def prob_loss_function(recon_x,var_x, x, mu, logvar):
     
-    var_x=var_x
-    std = var_x.mul(0.5).exp_()
-    std=std
-    #std_all=torch.prod(std,dim=1)
-    const=(-torch.sum(var_x,(1,2,3)))/2
-    #const=const.repeat(10,1,1,1) ##check if it is correct
     x_temp=x.repeat(10,1,1,1)
-    term1=torch.sum((((recon_x-x_temp)/std)**2),(1, 2,3))
+    msk = torch.tensor(x_temp > 1e-6).float()
+    std = var_x.mul(0.5).exp_()
+    #std_all=torch.prod(std,dim=1)
+    const=(-torch.sum(var_x*msk,(1,2,3)))/2
+    #const=const.repeat(10,1,1,1) ##check if it is correct
+    
+    term1=torch.sum((((recon_x-x_temp)*msk/std)**2),(1, 2,3))
     const2=-((128*128*3)/2)*math.log((2*math.pi))
     
  
@@ -195,8 +195,9 @@ for epoch in range(max_epochs):
     train_loss_list.append(train_loss)
     valid_loss_list.append(valid_loss)
     _, _, rec_imgs,var_img = G(fixed_batch)
-  
+    
     show_and_save('Input_epoch_%d.png' % epoch ,make_grid((fixed_batch.data[0:8,2:3,:,:]).cpu(),8,range=[0,1.5]))
+  
     show_and_save('rec_epoch_%d.png' % epoch ,make_grid((rec_imgs.data[0:8,2:3,:,:]).cpu(),8))
     #samples = G.decoder(fixed_noise)
     #show_and_save('samples_epoch_%d.png' % epoch ,make_grid((samples.data[0:8,2:3,:,:]).cpu(),8))
