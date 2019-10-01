@@ -169,9 +169,9 @@ def Validation(X):
                            nrow=n)
            #############save z values###############
             if i==0:
-                rec_error_all = z_value+0
+                rec_error_all =(f_data-f_recon_batch)+0
             else:
-                rec_error_all = torch.cat([rec_error_all, z_value])
+                rec_error_all = torch.cat([rec_error_all, (f_data-f_recon_batch)])
 
     print('====> Test set loss: {:.4f}'.format(test_loss))
     return rec_error_all
