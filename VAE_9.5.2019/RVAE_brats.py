@@ -166,7 +166,7 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     std_all = torch.prod(std_all, dim=1)
     std_all = torch.prod(std_all, dim=1)+1e-6 
     
-    term1 = -(beta + 1) / (beta * torch.pow((std_all * (2 * math.pi)),
+    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
                                             (beta / 2)))
     term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
     term2 = torch.exp(-(0.5 * beta * term2))
