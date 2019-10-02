@@ -44,14 +44,17 @@ def save_model(epoch, encoder, decoder):
 
 def load_model(epoch, encoder, decoder, loc):
     #  restore models
-    decoder.load_state_dict(torch.load(loc+'/VAE_GAN_decoder_%d.pth' % epoch))
+    decoder.load_state_dict(torch.load(loc +
+                                       '/VAE_GAN_decoder_%d.pth' % epoch))
     decoder.cuda()
-    encoder.load_state_dict(torch.load(loc+'/VAE_GAN_encoder_%d.pth' % epoch))
+    encoder.load_state_dict(torch.load(loc +
+                                       '/VAE_GAN_encoder_%d.pth' % epoch))
     encoder.cuda()
-  
 
 
-d = np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats2015_HGG.npz')
+d = np.load(
+    '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats2015_HGG.npz'
+)
 X = d['data']
 X = X[:, :, :, 0:3]
 X = X.astype('float64')
@@ -81,14 +84,14 @@ input_channels = 3
 hidden_size = 64
 max_epochs = 100
 lr = 3e-4
-beta = 0.00000001
+beta = 1e-16 #0.00000001
 
 #######network################
-epoch=31
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
+epoch = 31
+LM = '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
-G=VAE_Generator(input_channels, hidden_size).cuda()
+G = VAE_Generator(input_channels, hidden_size).cuda()
 #load_model(epoch,G.encoder, G.decoder,LM)
 opt_enc = optim.Adam(G.parameters(), lr=lr)
 
@@ -141,11 +144,10 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
     std = var_x.mul(0.5).exp_()
     #std_all=torch.prod(std,dim=1)
-    const = (-torch.sum(var_x*msk, (1, 2, 3))) / 2
+    const = (-torch.sum(var_x * msk, (1, 2, 3))) / 2
     #const=const.repeat(10,1,1,1) ##check if it is correct
 
-
-    term1 = torch.sum((((recon_x - x_temp)*msk / std)**2), (1, 2, 3))
+    term1 = torch.sum((((recon_x - x_temp) * msk / std)**2), (1, 2, 3))
     const2 = -((128 * 128 * 3) / 2) * math.log((2 * math.pi))
 
     #term2=torch.log(const+0.0000000000001)
@@ -162,16 +164,20 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
     std = logvar_x.mul(0.5).exp_()
     # dim=(128*128*3)
-    std_all = torch.prod(std, dim=1)
-    std_all = torch.prod(std_all, dim=1)
-    std_all = torch.prod(std_all, dim=1)+1e-6 
-    
-    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
-                                            (beta / 2)))
+    #    std_all = torch.prod(std, dim=1)
+    #    std_all = torch.prod(std_all, dim=1)
+    #    std_all = torch.prod(std_all, dim=1)+1e-6
+    std_all_beta = (std**beta).prod()
+
+    #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
+    #                                            (beta / 2)))
+    term1 = -(beta + 1) / (beta * std_all_beta *
+                           torch.pow(torch.tensor(2.0 * math.pi),
+                                     (beta / 2.0)))
+
     term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
     term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = 1 / (torch.pow(std_all, beta) * (((beta + 1) *
-                                               ((2 * math.pi)**beta))**(0.5)))
+    term3 = 1 / (std_all_beta * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
 
     prob_term = term1 * term2 + term3
 
@@ -202,12 +208,11 @@ for epoch in range(max_epochs):
         #datav[l2,:,row2:row2+5,:]=0
 
         mean, logvar, rec_enc, var_enc = G(datav)
- #   if beta == 0:
-        prob_err0 = prob_loss_function(rec_enc, var_enc, datav, mean,
-                                          logvar)
-#    else:
+        #   if beta == 0:
+        prob_err0 = prob_loss_function(rec_enc, var_enc, datav, mean, logvar)
+        #    else:
         prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
-                                               logvar, beta)
+                                           logvar, beta)
         err_enc = prob_err
         opt_enc.zero_grad()
         err_enc.backward()
