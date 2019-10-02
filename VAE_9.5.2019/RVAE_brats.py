@@ -89,7 +89,7 @@ LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
-load_model(epoch,G.encoder, G.decoder,LM)
+#load_model(epoch,G.encoder, G.decoder,LM)
 opt_enc = optim.Adam(G.parameters(), lr=lr)
 
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
@@ -170,7 +170,7 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
                                             (beta / 2)))
     term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
     term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = -1 / (torch.pow(std_all, beta) * (((beta + 1) *
+    term3 = 1 / (torch.pow(std_all, beta) * (((beta + 1) *
                                                ((2 * math.pi)**beta))**(0.5)))
 
     prob_term = term1 * term2 + term3
