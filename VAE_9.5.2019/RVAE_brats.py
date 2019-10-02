@@ -23,6 +23,7 @@ from scipy.ndimage import gaussian_filter
 from VAE_model_pixel import Encoder, Decoder, VAE_Generator
 pret = 0
 random.seed(8)
+torch.manual_seed(7)
 
 
 def show_and_save(file_name, img):
@@ -72,7 +73,6 @@ validation_data = torch.from_numpy(X_valid).float()
 
 batch_size = 8
 
-torch.manual_seed(7)
 train_loader = torch.utils.data.DataLoader(input,
                                            batch_size=batch_size,
                                            shuffle=True)
@@ -163,29 +163,37 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
     std = logvar_x.mul(0.5).exp_()
+    beta = torch.tensor(beta).cuda()
     # dim=(128*128*3)
     #    std_all = torch.prod(std, dim=1)
     #    std_all = torch.prod(std_all, dim=1)
     #    std_all = torch.prod(std_all, dim=1)+1e-6
     std_all_beta = (std**beta).prod()
+    log_std_all_beta = (torch.log(std)*beta).sum()
+    
+    log_term1 = torch.log(1.0+beta) - torch.log(beta) -(beta/2)*torch.log(torch.tensor(2*math.pi)) - log_std_all_beta
 
     #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
     #                                            (beta / 2)))
     term1 = -(beta + 1) / (beta * std_all_beta *
-                           torch.pow(torch.tensor(2.0 * math.pi),
+                           torch.pow(torch.tensor(2.0 * math.pi).cuda(),
                                      (beta / 2.0)))
 
     term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
-    term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = 1 / (std_all_beta * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
+    logterm2 = -(0.5 * beta * term2)
+    
+    term1 = (log_term1+logterm2).exp()
 
-    prob_term = term1 * term2 + term3
+    term2 = 1 / (std_all_beta * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
+
+    prob_term = -term1 + term2
+   
 
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return -BBCE + KLD
+    return BBCE + KLD
 
 
 ################################
