@@ -137,7 +137,7 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 def prob_loss_function(recon_x, var_x, x, mu, logvar):
     # x = batch_sz x channel x dim1 x dim2
     x_temp = x.repeat(10, 1, 1, 1)
-    msk = torch.tensor(x_temp > 1e-6).float()
+    msk = torch.tensor(x_temp > -1e6).float()
 
     std = var_x.mul(0.5).exp_()
     #std_all=torch.prod(std,dim=1)
@@ -202,11 +202,11 @@ for epoch in range(max_epochs):
         #datav[l2,:,row2:row2+5,:]=0
 
         mean, logvar, rec_enc, var_enc = G(datav)
-        if beta == 0:
-            prob_err = prob_loss_function(rec_enc, var_enc, datav, mean,
+ #   if beta == 0:
+        prob_err0 = prob_loss_function(rec_enc, var_enc, datav, mean,
                                           logvar)
-        else:
-            prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
+#    else:
+        prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
                                                logvar, beta)
         err_enc = prob_err
         opt_enc.zero_grad()
