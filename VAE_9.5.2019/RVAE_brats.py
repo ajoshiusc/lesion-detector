@@ -27,7 +27,7 @@ torch.manual_seed(7)
 
 
 def show_and_save(file_name, img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE/%s.png" % file_name
+    f = "%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -168,23 +168,24 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     #    std_all = torch.prod(std, dim=1)
     #    std_all = torch.prod(std_all, dim=1)
     #    std_all = torch.prod(std_all, dim=1)+1e-6
-    std_all_beta = (std**beta).prod()
+#    std_all_beta = (std**beta).prod()
     log_std_all_beta = (torch.log(std)*beta).sum()
+
     
     log_term1 = torch.log(1.0+beta) - torch.log(beta) -(beta/2)*torch.log(torch.tensor(2*math.pi)) - log_std_all_beta
 
     #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
     #                                            (beta / 2)))
-    term1 = -(beta + 1) / (beta * std_all_beta *
-                           torch.pow(torch.tensor(2.0 * math.pi).cuda(),
-                                     (beta / 2.0)))
+    #term1 = -(beta + 1) / (beta * std_all_beta *
+    #                       torch.pow(torch.tensor(2.0 * math.pi).cuda(),
+    #                                 (beta / 2.0)))
 
     term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
     logterm2 = -(0.5 * beta * term2)
     
     term1 = (log_term1+logterm2).exp()
 
-    term2 = 1 / (std_all_beta * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
+    term2 = 1 / (log_std_all_beta.exp() * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
 
     prob_term = -term1 + term2
    
