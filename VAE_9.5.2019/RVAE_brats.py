@@ -140,7 +140,7 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 def prob_loss_function(recon_x, var_x, x, mu, logvar):
     # x = batch_sz x channel x dim1 x dim2
     x_temp = x.repeat(10, 1, 1, 1)
-    msk = torch.tensor(x_temp > -1e6).float()
+    msk = torch.tensor(x_temp > 1e-6).float()
 
     std = var_x.mul(0.5).exp_()
     #std_all=torch.prod(std,dim=1)
@@ -162,14 +162,16 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
 def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
-    std = logvar_x.mul(0.5).exp_()
+    msk = torch.tensor(x_temp > 1e-6).float()
+
+    std = logvar_x.mul(0.5).exp_()*msk + 1e-16
     beta = torch.tensor(beta).cuda()
     # dim=(128*128*3)
     #    std_all = torch.prod(std, dim=1)
     #    std_all = torch.prod(std_all, dim=1)
     #    std_all = torch.prod(std_all, dim=1)+1e-6
 #    std_all_beta = (std**beta).prod()
-    log_std_all_beta = (torch.log(std)*beta).sum()
+    log_std_all_beta = (torch.log(std)*msk*beta).sum()
 
     
     log_term1 = torch.log(1.0+beta) - torch.log(beta) -(beta/2)*torch.log(torch.tensor(2*math.pi)) - log_std_all_beta
@@ -180,7 +182,7 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     #                       torch.pow(torch.tensor(2.0 * math.pi).cuda(),
     #                                 (beta / 2.0)))
 
-    term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
+    term2 = torch.sum(((msk*(recon_x - x_temp) / std)**2), (1, 2, 3))
     logterm2 = -(0.5 * beta * term2)
     
     term1 = (log_term1+logterm2).exp()
