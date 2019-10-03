@@ -83,9 +83,9 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 input_channels = 3
 hidden_size = 64
 max_epochs = 100
-lr = 3e-3
-beta = 1e-8 #0.00000001
-
+lr = 3e-4
+beta = 5e-7 #0.00000001 1e-8, 1e-7 seems same as beta=0, 7e-7 diverges after 3 epochs, 3e-7 seems fine, 5e-3 produces checkerboard artefacts
+# 5e-7 seems to be robust
 #######network################
 epoch = 31
 LM = '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
