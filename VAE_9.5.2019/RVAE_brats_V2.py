@@ -81,7 +81,7 @@ input_channels = 3
 hidden_size = 64
 max_epochs = 100
 lr = 3e-4
-beta = 1e-7
+beta = 0.1
 
 #######network################
 epoch=40
@@ -177,8 +177,7 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     term2 = 1 / (log_std_all_beta.exp() * (((beta + 1) *
                                             ((2 * math.pi)**beta))**0.5))
 
-    prob_term = -term1 + term2
-
+    prob_term = -term1 + term2+(beta+1)/beta
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
