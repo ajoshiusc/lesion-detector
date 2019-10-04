@@ -90,7 +90,7 @@ class Decoder(nn.Module):
             # 3 x 128 x 128
         self.activation = nn.Tanh()
         self.relu=nn.ReLU()
-            
+        self.activation2=nn.Sigmoid()    
     
     def forward(self, code):
         bs = code.size()[0]
@@ -111,7 +111,7 @@ class Decoder(nn.Module):
         #output_mu= self.activation(output_mu)
 
         output_logvar = self.deconv5(output, output_size=(bs, 3, 128, 128))
-        #output_sig= self.activation(output_sig)
+        output_logvar= -2*self.activation2(output_logvar)
         return output_mu, output_logvar
 
 

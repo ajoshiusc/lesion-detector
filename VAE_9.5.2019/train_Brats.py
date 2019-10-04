@@ -26,7 +26,7 @@ random.seed(8)
 
             
 def show_and_save(file_name,img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_mask/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/rist_var/%s.png" % file_name
     save_image(img[2:3,:,:],f,range=[0,1.5])
     
     #fig = plt.figure(dpi=300)
