@@ -84,7 +84,7 @@ input_channels = 3
 hidden_size = 64
 max_epochs = 100
 lr = 3e-4
-beta = 5e-7 #0.00000001 1e-8, 1e-7 seems same as beta=0, 7e-7 diverges after 3 epochs, 3e-7 seems fine, 5e-3 produces checkerboard artefacts
+beta = 0 # seems robust at 1e-7  #0.00000001 1e-8, 1e-7 seems same as beta=0, 7e-7 diverges after 3 epochs, 3e-7 seems fine, 5e-3 produces checkerboard artefacts, 5e-8 see,s to produce somewhat blurry images
 # 5e-7 seems to be robust
 #######network################
 epoch = 31
@@ -164,17 +164,17 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
 
-    std = logvar_x.mul(0.5).exp_()*msk + 1e-16
+    std = logvar_x.mul(0.5).exp_() * msk + 1e-16
     beta = torch.tensor(beta).cuda()
     # dim=(128*128*3)
     #    std_all = torch.prod(std, dim=1)
     #    std_all = torch.prod(std_all, dim=1)
     #    std_all = torch.prod(std_all, dim=1)+1e-6
-#    std_all_beta = (std**beta).prod()
-    log_std_all_beta = (torch.log(std)*msk*beta).sum()
+    #    std_all_beta = (std**beta).prod()
+    log_std_all_beta = (torch.log(std) * msk * beta).sum()
 
-    
-    log_term1 = torch.log(1.0+beta) - torch.log(beta) -(beta/2)*torch.log(torch.tensor(2*math.pi)) - log_std_all_beta
+    log_term1 = torch.log(1.0 + beta) - torch.log(beta) - (
+        beta / 2) * torch.log(torch.tensor(2 * math.pi)) - log_std_all_beta
 
     #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
     #                                            (beta / 2)))
@@ -182,15 +182,15 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     #                       torch.pow(torch.tensor(2.0 * math.pi).cuda(),
     #                                 (beta / 2.0)))
 
-    term2 = torch.sum(((msk*(recon_x - x_temp) / std)**2), (1, 2, 3))
+    term2 = torch.sum(((msk * (recon_x - x_temp) / std)**2), (1, 2, 3))
     logterm2 = -(0.5 * beta * term2)
-    
-    term1 = (log_term1+logterm2).exp()
 
-    term2 = 1 / (log_std_all_beta.exp() * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
+    term1 = (log_term1 + logterm2).exp()
+
+    term2 = 1 / (log_std_all_beta.exp() * (((beta + 1) *
+                                            ((2 * math.pi)**beta))**0.5))
 
     prob_term = -term1 + term2
-   
 
     BBCE = torch.sum(prob_term / 10)
 
@@ -219,11 +219,12 @@ for epoch in range(max_epochs):
         #datav[l2,:,row2:row2+5,:]=0
 
         mean, logvar, rec_enc, var_enc = G(datav)
-        #   if beta == 0:
-        prob_err0 = prob_loss_function(rec_enc, var_enc, datav, mean, logvar)
-        #    else:
-        prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
-                                           logvar, beta)
+        if beta == 0:
+            prob_err = prob_loss_function(rec_enc, var_enc, datav, mean,
+                                           logvar)
+        else:
+            prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
+                                               logvar, beta)
         err_enc = prob_err
         opt_enc.zero_grad()
         err_enc.backward()
