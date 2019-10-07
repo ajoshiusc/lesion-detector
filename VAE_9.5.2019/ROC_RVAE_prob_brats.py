@@ -74,8 +74,8 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=10
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE'
+epoch=39
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE_2'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -110,6 +110,33 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
 ####################################
 
+def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
+    x_temp = x.repeat(10, 1, 1, 1)
+    msk = torch.tensor(x_temp > 1e-6).float()
+
+    std = logvar_x.mul(0.5).exp_() * msk + 1e-16
+    beta = torch.tensor(beta).cuda()
+    log_std_all_beta = (torch.log(std) * msk * beta).sum()
+
+    log_term1 = torch.log(1.0 + beta) - torch.log(beta) - (
+        beta / 2) * torch.log(torch.tensor(2 * math.pi)) - log_std_all_beta
+
+    term2 = torch.sum(((msk * (recon_x - x_temp) / std)**2), (1, 2, 3))
+    logterm2 = -(0.5 * beta * term2)
+
+    term1 = (log_term1 + logterm2).exp()
+
+    term2 = 1 / (log_std_all_beta.exp() * (((beta + 1) *
+                                            ((2 * math.pi)**beta))**0.5))
+
+    prob_term = -term1 + term2+(beta+1)/beta
+    BBCE = torch.sum(prob_term / 10)
+
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    return BBCE + KLD
+
+
 ##########TEST##########
 def Validation(X):
     G.eval()
@@ -140,14 +167,14 @@ def Validation(X):
             mu2_all=torch.mean((tem_rec_enc**2),(0))
             std2=torch.mean(std2,(0))
 
-            std_all=std2+mu2_all-((mu_all)**2)
+            std_all=std2#+mu2_all-((mu_all)**2)
             
             
             
             f_recon_batch=mu_all[:,2,:,:]
             f_data=data[:,2,:,:]
             sig_plot=((std_all**(0.5))[:,2,:,:])
-            z_value=((f_data-f_recon_batch)/sig_plot)*msk[:,2,:,:]
+            z_value=((f_data-f_recon_batch)/sig_plot+1e-16)*msk[:,2,:,:]
             sig_plot=sig_plot*msk[:,2,:,:]
             f_recon_batch=f_recon_batch*msk[:,2,:,:]
             
@@ -172,12 +199,12 @@ def Validation(X):
                     f_data.view(batch_size, 1, 128, 128)[:n],
                     f_recon_batch.view(batch_size, 1, 128, 128)[:n],
                     (f_data.view(batch_size, 1, 128, 128)[:n]-f_recon_batch.view(batch_size, 1, 128, 128)[:n]),
-                    sig_plot.view(batch_size, 1, 128, 128)[:n],
+                    sig_plot.view(batch_size, 1, 128, 128)[:n]*10,
                     err_rec.view(batch_size, 1, 128, 128)[:n],
                     seg.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'Brats_results_RVAE/reconstruction_b' +str(i)+ '.png',
+                           'Brats_results_RVAE_2/reconstruction_b' +str(i)+ '.png',
                            nrow=n)
            #############save z values###############
             if i==0:

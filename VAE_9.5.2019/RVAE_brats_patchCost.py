@@ -81,11 +81,11 @@ input_channels = 3
 hidden_size = 64
 max_epochs = 40
 lr = 3e-4
-beta = 1e-16
+beta = 1e-7
 
 #######network################
-epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE_2'
+epoch=40
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -160,29 +160,32 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
 def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
-    msk = torch.tensor(x_temp > 1e-6).float()
+    size = 64 # patch size
+    stride = 64 # patch stride
+    patches = x_temp.unfold(1, size, stride).unfold(2, size, stride).unfold(3, size, stride)
+    print(patches.shape)
 
-    std = logvar_x.mul(0.5).exp_() * msk + 1e-16
-    beta = torch.tensor(beta).cuda()
-    log_std_all_beta = (torch.log(std) * msk * beta).sum()
 
-    log_term1 = torch.log(1.0 + beta) - torch.log(beta) - (
-        beta / 2) * torch.log(torch.tensor(2 * math.pi)) - log_std_all_beta
+    std = logvar_x.mul(0.5).exp_()
+    std_all_beta = (std**beta).prod()
 
-    term2 = torch.sum(((msk * (recon_x - x_temp) / std)**2), (1, 2, 3))
-    logterm2 = -(0.5 * beta * term2)
+    #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
+    #                                            (beta / 2)))
+    term1 = -(beta + 1) / (beta * std_all_beta *
+                           torch.pow(torch.tensor(2.0 * math.pi),
+                                     (beta / 2.0)))
 
-    term1 = (log_term1 + logterm2).exp()
+    term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
+    term2 = torch.exp(-(0.5 * beta * term2))
+    term3 = 1 / (std_all_beta * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
 
-    term2 = 1 / (log_std_all_beta.exp() * (((beta + 1) *
-                                            ((2 * math.pi)**beta))**0.5))
+    prob_term = term1 * term2 + term3
 
-    prob_term = -term1 + term2+(beta+1)/beta
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BBCE + KLD
+    return -BBCE + KLD
 
 
 ################################

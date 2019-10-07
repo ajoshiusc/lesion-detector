@@ -78,11 +78,11 @@ def Brats2015():
    #data=data[0:3120,:,:,:]
    for i in range(data.shape[0]):
       if i==0:
-         X= cv2.resize(data[i,:,:,:], dsize=(128, 128), interpolation=cv2.INTER_CUBIC)
-         X=X.reshape((1,128,128,4))
+         X= cv2.resize(data[i,:,:,:], dsize=(64, 64), interpolation=cv2.INTER_CUBIC)
+         X=X.reshape((1,64,64,4))
       else:
-         temp=cv2.resize(data[i,:,:,:], dsize=(128, 128), interpolation=cv2.INTER_CUBIC) 
-         temp=temp.reshape((1,128,128,4))
+         temp=cv2.resize(data[i,:,:,:], dsize=(64, 64), interpolation=cv2.INTER_CUBIC) 
+         temp=temp.reshape((1,64,64,4))
          X=np.append(X,temp ,axis=0)
    return X
 if __name__ == "__main__":
@@ -90,6 +90,6 @@ if __name__ == "__main__":
    fig, ax = plt.subplots()
    im = ax.imshow(X_r[0,:,:,0])
    plt.show()
-np.savez('Brats2015_HGG.npz', data=X_r)       
+np.savez('Brats2015_HGG_64.npz', data=X_r)       
 
 

@@ -139,7 +139,7 @@ def Validation(X):
             mu2_all=torch.mean((tem_rec_enc**2),(0))
             std2=torch.mean(std2,(0))
 
-            std_all=std2+mu2_all-((mu_all)**2)
+            std_all=std2#+mu2_all-((mu_all)**2)
             
             
             
