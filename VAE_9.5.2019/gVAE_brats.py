@@ -166,18 +166,14 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     beta = torch.tensor(beta).cuda()
     log_std_all_beta = (torch.log(std) * msk * beta).sum()
 
-    log_term1 = torch.log(1.0 + beta) - torch.log(beta) - (
-        beta / 2) * torch.log(torch.tensor(2 * math.pi)) - log_std_all_beta
+    term1=math.log((2 * math.pi)**0.5)+log_std_all_beta
+    term2 = 0.5 *torch.sum(((msk * (recon_x - x_temp) / std)**2), (1, 2, 3))
+    term3=-(beta/beta+1)*log_std_all_beta 
+    term4=-(1/beta+1)*math.log(((beta+1)*((2 * math.pi)**beta))**0.5)
 
-    term2 = torch.sum(((msk * (recon_x - x_temp) / std)**2), (1, 2, 3))
-    logterm2 = -(0.5 * beta * term2)
+  
 
-    term1 = (log_term1 + logterm2).exp()
-
-    term2 = 1 / (log_std_all_beta.exp() * (((beta + 1) *
-                                            ((2 * math.pi)**beta))**0.5))
-
-    prob_term = -term1 + term2+(beta+1)/beta
+    prob_term = term1+term2+term3+term4
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())

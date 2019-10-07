@@ -20,6 +20,9 @@ import random
 import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
+from VAE_model_pixel_vanilla import Encoder,Decoder,VAE_Generator
+
+
 pret=0
 random.seed(8)
 
@@ -75,125 +78,6 @@ train_loader = torch.utils.data.DataLoader(input,
 Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           batch_size=batch_size,
                                           shuffle=True)
-#####
-
-class Encoder(nn.Module):
-    def __init__(self, input_channels, output_channels, representation_size = 64):
-        super(Encoder, self).__init__()
-        # input parameters
-        self.input_channels = input_channels
-        self.output_channels = output_channels
-        
-        self.features = nn.Sequential(
-            # nc x 128x 128
-            nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
-            nn.BatchNorm2d(representation_size),
-            nn.ReLU(),
-            # hidden_size x 64 x 64
-            nn.Conv2d(representation_size, representation_size*2, 5, stride=2, padding=2),
-            nn.BatchNorm2d(representation_size * 2),
-            nn.ReLU(),
-            # hidden_size*2 x 32 x 32
-            nn.Conv2d(representation_size*2, representation_size*4, 5, stride=2, padding=2),
-            nn.BatchNorm2d(representation_size * 4),
-            nn.ReLU())
-            # hidden_size*4 x 16x 16
-            
-        self.mean = nn.Sequential(
-            nn.Linear(representation_size*4*16*16, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(),
-            nn.Linear(2048, output_channels))
-        
-        self.logvar = nn.Sequential(
-            nn.Linear(representation_size*4*16*16, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(),
-            nn.Linear(2048, output_channels))
-        
-    def forward(self, x):
-        batch_size = x.size()[0]
-
-        hidden_representation = self.features(x)
-
-        mean = self.mean(hidden_representation.view(batch_size, -1))
-        logvar = self.logvar(hidden_representation.view(batch_size, -1))
-
-        return mean, logvar
-    
-    def hidden_layer(self, x):
-        batch_size = x.size()[0]
-        output = self.features(x)
-        return output
-
-class Decoder(nn.Module):
-    def __init__(self, input_size, representation_size):
-        super(Decoder, self).__init__()
-        self.input_size = input_size
-        self.representation_size = representation_size
-        dim = representation_size[0] * representation_size[1] * representation_size[2]
-        
-        self.preprocess = nn.Sequential(
-            nn.Linear(input_size, dim),
-            nn.BatchNorm1d(dim),
-            nn.ReLU())
-        
-            # 256 x 16 x 16
-        self.deconv1 = nn.ConvTranspose2d(representation_size[0], 256, 5, stride=2, padding=2)
-        self.act1 = nn.Sequential(nn.BatchNorm2d(256),
-                                  nn.ReLU())
-            # 256 x 32 x 32
-        self.deconv2 = nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2)
-        self.act2 = nn.Sequential(nn.BatchNorm2d(128),
-                                  nn.ReLU())
-            # 128 x 64 x 64
-        self.deconv3 = nn.ConvTranspose2d(128, 32, 5, stride=2, padding=2)
-        self.act3 = nn.Sequential(nn.BatchNorm2d(32),
-                                  nn.ReLU())
-            # 32 x 128 x 128
-        self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
-            # 3 x 128 x 128
-        self.activation = nn.Tanh()
-            
-    
-    def forward(self, code):
-        bs = code.size()[0]
-        preprocessed_codes = self.preprocess(code)
-        preprocessed_codes = preprocessed_codes.view(-1,
-                                                     self.representation_size[0],
-                                                     self.representation_size[1],
-                                                     self.representation_size[2])
-        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 32, 32))
-        output = self.act1(output)
-        output = self.deconv2(output, output_size=(bs, 128, 64, 64))
-        output = self.act2(output)
-        output = self.deconv3(output, output_size=(bs, 32, 128, 128))
-        output = self.act3(output)
-        output = self.deconv4(output, output_size=(bs, 3, 128, 128))
-        output = self.activation(output)
-        return output
-class VAE_GAN_Generator(nn.Module):
-    def __init__(self, input_channels, hidden_size, representation_size=(256, 16, 16)):
-        super(VAE_GAN_Generator, self).__init__()
-        self.input_channels = input_channels
-        self.hidden_size = hidden_size
-        self.representation_size = representation_size
-        
-        self.encoder = Encoder(input_channels, hidden_size)
-        self.decoder = Decoder(hidden_size, representation_size)
-        
-    def forward(self, x):
-        batch_size = x.size()[0]
-        mean, logvar = self.encoder(x)
-        std = logvar.mul(0.5).exp_()
-        
-        reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
-
-        reparametrized_noise = mean + std * reparametrized_noise
-
-        rec_images = self.decoder(reparametrized_noise)
-        
-        return mean, logvar, rec_images
 
 
 ###### define constant########
@@ -204,21 +88,20 @@ lr = 3e-4
 beta = 0
 
 
-G = VAE_GAN_Generator(input_channels, hidden_size).cuda()
 
 
 
+#####
 
-
+G=VAE_Generator(input_channels, hidden_size).cuda()
+#load_model(epoch,G.encoder, G.decoder,LM)
 opt_enc = optim.Adam(G.parameters(), lr=lr)
-
-
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
 data= next(iter(Validation_loader))
 fixed_batch = Variable(data).cuda()
 
 
-
+########loss##################
 
 def MSE_loss(Y, X):
     ret = (X- Y) ** 2
@@ -248,11 +131,11 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
     return BBCE +KLD
-
+##########load pre train model#########
 if pret==1:
     load_model(499, G.encoder, G.decoder, D)
 
-
+#############train##########################
 train_loss=0
 valid_loss=0
 valid_loss_list, train_loss_list= [], []
@@ -297,6 +180,8 @@ for epoch in range(max_epochs):
 
     #localtime = time.asctime( time.localtime(time.time()) )
     #D_real_list_np=(D_real_list).to('cpu')
+
+##########save and plot###############
 save_model(epoch, G.encoder, G.decoder)    
 plt.plot(train_loss_list, label="train loss")
 plt.plot(valid_loss_list, label="validation loss")

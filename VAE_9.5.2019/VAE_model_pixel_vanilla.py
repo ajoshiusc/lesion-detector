@@ -8,9 +8,6 @@ from torchvision import datasets, transforms
 import torchvision.utils as vutils
 
 
-
-
-##########define network##########
 class Encoder(nn.Module):
     def __init__(self, input_channels, output_channels, representation_size = 64):
         super(Encoder, self).__init__()
@@ -86,11 +83,9 @@ class Decoder(nn.Module):
                                   nn.ReLU())
             # 32 x 128 x 128
         self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
-        self.deconv5 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
             # 3 x 128 x 128
         self.activation = nn.Tanh()
-        self.relu=nn.ReLU()
-        self.activation2=nn.Sigmoid()    
+            
     
     def forward(self, code):
         bs = code.size()[0]
@@ -105,20 +100,12 @@ class Decoder(nn.Module):
         output = self.act2(output)
         output = self.deconv3(output, output_size=(bs, 32, 128, 128))
         output = self.act3(output)
-        output=self.activation(output)
-
-        output_mu = self.deconv4(output, output_size=(bs, 3, 128, 128))
-        #output_mu= self.activation(output_mu)
-
-        output_logvar = self.deconv5(output, output_size=(bs, 3, 128, 128))
-        #output_logvar= -2*self.activation2(output_logvar)
-        return output_mu, output_logvar
-
-
-
-class VAE_Generator(nn.Module):
+        output = self.deconv4(output, output_size=(bs, 3, 128, 128))
+        output = self.activation(output)
+        return output
+class VAE_GAN_Generator(nn.Module):
     def __init__(self, input_channels, hidden_size, representation_size=(256, 16, 16)):
-        super(VAE_Generator, self).__init__()
+        super(VAE_GAN_Generator, self).__init__()
         self.input_channels = input_channels
         self.hidden_size = hidden_size
         self.representation_size = representation_size
@@ -131,18 +118,10 @@ class VAE_Generator(nn.Module):
         mean, logvar = self.encoder(x)
         std = logvar.mul(0.5).exp_()
         
-        for i in range (10):
-            reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
+        reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
 
-            reparametrized_noise = mean + std * reparametrized_noise
-            if i==0:
-                rec_images,var_image = self.decoder(reparametrized_noise)
-            else:
-                rec_images_tmp,var_image_tmp=self.decoder(reparametrized_noise)
-                rec_images=torch.cat([rec_images,rec_images_tmp],0)
-                var_image=torch.cat([var_image,var_image_tmp],0)
-        return mean, logvar, rec_images,var_image
+        reparametrized_noise = mean + std * reparametrized_noise
 
-
-
-#################################
+        rec_images = self.decoder(reparametrized_noise)
+        
+        return mean, logvar, rec_images

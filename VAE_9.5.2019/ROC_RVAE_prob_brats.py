@@ -74,8 +74,8 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_mask'
+epoch=10
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -85,27 +85,28 @@ load_model(epoch,G.encoder, G.decoder,LM)
 
 
 ##########define prob loss##########
-def prob_loss_function(recon_x,var_x, x, mu, logvar):
-    
-    x_temp=x.repeat(10,1,1,1)
+def prob_loss_function(recon_x, var_x, x, mu, logvar):
+    # x = batch_sz x channel x dim1 x dim2
+    x_temp = x.repeat(10, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
+
     std = var_x.mul(0.5).exp_()
     #std_all=torch.prod(std,dim=1)
-    const=(-torch.sum(var_x*msk,(1,2,3)))/2
+    const = (-torch.sum(var_x*msk, (1, 2, 3))) / 2
     #const=const.repeat(10,1,1,1) ##check if it is correct
-    
-    term1=torch.sum((((recon_x-x_temp)*msk/std)**2),(1, 2,3))
-    const2=-((128*128*3)/2)*math.log((2*math.pi))
-    
- 
+
+
+    term1 = torch.sum((((recon_x - x_temp)*msk / std)**2), (1, 2, 3))
+    const2 = -((128 * 128 * 3) / 2) * math.log((2 * math.pi))
+
     #term2=torch.log(const+0.0000000000001)
-    prob_term=const+(-(0.5)*term1)+const2
-    
-    BBCE=torch.sum(prob_term/10)
+    prob_term = const + (-(0.5) * term1) + const2
+
+    BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return -BBCE +KLD
+    return -BBCE + KLD
 
 ####################################
 
@@ -176,7 +177,7 @@ def Validation(X):
                     seg.view(batch_size, 1, 128, 128)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'Brats_mask/reconstruction_b' +str(i)+ '.png',
+                           'Brats_results_RVAE/reconstruction_b' +str(i)+ '.png',
                            nrow=n)
            #############save z values###############
             if i==0:
@@ -197,13 +198,16 @@ if __name__ == "__main__":
     
     y_true = np.reshape(y_true, (-1, 1))
     y_true = y_true.astype(int)
-
     maskX=np.reshape(X_test_seg[:,:, :, 2], (-1, 1))
     y_true=y_true[maskX>0]
+
 
     y_probas = (rec_error_all).to('cpu')
     y_probas = y_probas.numpy()
     
+    
+
+
     y_probas =np.reshape(y_probas, (-1, 1,128,128))
     median=1-((st.norm.sf(abs(y_probas))*2)/(128*128))
 
@@ -217,7 +221,6 @@ if __name__ == "__main__":
     print(np.max(y_true ))
     print(np.min(y_true ))
     y_probas=y_probas[maskX>0]
-    
 
     fpr, tpr, th= metrics.roc_curve(y_true, y_probas)
     L=fpr/tpr
