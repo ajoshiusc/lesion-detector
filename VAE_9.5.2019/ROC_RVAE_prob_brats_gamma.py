@@ -20,7 +20,7 @@ import torchvision.utils as vutils
 from torchvision.utils import save_image
 import matplotlib.pyplot as plt
 import scipy.signal
-from VAE_model_pixel import Encoder, Decoder, VAE_Generator
+from VAE_model_pixel64 import Encoder, Decoder, VAE_Generator
 import scipy.stats as st
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
@@ -84,13 +84,13 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 
 input_channels = 3
 hidden_size = 64
-max_epochs = 200
+max_epochs = 20
 lr = 3e-4
 beta = 0
 device = 'cuda'
 #########################################
-epoch = 1
-LM = '/big_disk/ajoshi/coding_ground/lesion-detector/VAE_9.5.2019'
+epoch = 3
+LM = '/home/ajoshi/coding_ground/lesion-detector/VAE_9.5.2019/beta0_64'
 
 ##########load low res net##########
 G = VAE_Generator(input_channels, hidden_size).cuda()

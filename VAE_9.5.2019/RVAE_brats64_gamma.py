@@ -20,7 +20,7 @@ import random
 import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
-from VAE_model_pixel import Encoder, Decoder, VAE_Generator
+from VAE_model_pixel64 import Encoder, Decoder, VAE_Generator
 pret = 0
 random.seed(8)
 torch.manual_seed(7)
@@ -81,10 +81,10 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                                 shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 64
-max_epochs = 100
+hidden_size = 32
+max_epochs = 20
 lr = 3e-4
-beta = 1e-8  # seems robust at 1e-7  #0.00000001 1e-8, 1e-7 seems same as beta=0, 7e-7 diverges after 3 epochs, 3e-7 seems fine, 5e-3 produces checkerboard artefacts, 5e-8 see,s to produce somewhat blurry images
+beta = 0  # seems robust at 1e-7  #0.00000001 1e-8, 1e-7 seems same as beta=0, 7e-7 diverges after 3 epochs, 3e-7 seems fine, 5e-3 produces checkerboard artefacts, 5e-8 see,s to produce somewhat blurry images
 # 5e-7 seems to be robust
 #######network################
 epoch = 2
@@ -161,30 +161,30 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
 
 ####################################
-def gamma_prob_loss_function(recon_x, var_x, x, mu, logvar, beta):
+def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
     NDim = torch.sum(msk)
 
-    std = var_x.mul(0.5).exp_()
+    std = logvar_x.mul(0.5).exp_()
     #std_all=torch.prod(std,dim=1)
-    const = (-torch.sum(var_x * msk, (1, 2, 3))) / 2
+    const = torch.sum(logvar_x * msk, (1, 2, 3)) / 2
     #const=const.repeat(10,1,1,1) ##check if it is correct
+    const2 = (NDim / 2) * math.log((2 * math.pi))
 
-    term1 = torch.sum((((recon_x - x_temp) * msk / std)**2), (1, 2, 3))
-    const2 = -(NDim / 2) * math.log((2 * math.pi))
+    term1 = (0.5) * torch.sum((((recon_x - x_temp) * msk / std)**2), (1, 2, 3))
 
     #term2=torch.log(const+0.0000000000001)
-    term2 = (beta / (beta + 1)) * torch.sum(var_x.mul(0.5), (1, 2, 3))
-    term3 = (1 / (beta + 1)) * 0.5 * NDim * math.log(
-        ((2 * math.pi)**(beta)) * (beta + 1))
-    prob_term = const + (-(0.5) * term1) + const2 + term2 + term3
+    term2 = -(beta / (beta + 1)) * torch.sum(logvar_x.mul(0.5)*msk, (1, 2, 3))
+    term3 = -(1 / (beta + 1)) * 0.5 * (NDim * beta * math.log(
+        ((2 * math.pi))) + math.log(beta + 1))
+    prob_term = const + const2 + (term1)  + term2 + term3
 
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return -BBCE + KLD
+    return BBCE + KLD
 
 
 def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
@@ -240,8 +240,8 @@ for epoch in range(max_epochs):
         #if beta == 0:
         prob_err0 = prob_loss_function(rec_enc, var_enc, datav, mean, logvar)
         #else:
-        prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
-                                           logvar, beta)
+        prob_err = gamma_prob_loss_function(rec_enc, var_enc, datav, mean,
+                                            logvar, beta)
         err_enc = prob_err
         opt_enc.zero_grad()
         err_enc.backward()
