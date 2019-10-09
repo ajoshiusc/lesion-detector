@@ -20,10 +20,10 @@ import random
 import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
-from VAE_model_pixel64 import Encoder, Decoder, VAE_Generator
+from VAE_model_pixel8 import Encoder, Decoder, VAE_Generator
 pret = 0
 random.seed(8)
-input_size=64
+input_size=8
 
 
 def show_and_save(file_name, img):
@@ -79,8 +79,8 @@ X = X.astype('float64')
 
 #X_train, X_valid = train_test_split(X, test_size=0.2, random_state=10002,shuffle=False)
 X_valid,X_test=train_test_split(X_valid, test_size=0.25, random_state=10001,shuffle=False)
-X_train = np.transpose(X_train[:,::2,::2,:], (0, 3, 1,2))
-X_valid = np.transpose(X_valid[:,::2,::2,:] , (0, 3, 1,2))
+X_train = np.transpose(X_train[:,::16,::16,:], (0, 3, 1,2))
+X_valid = np.transpose(X_valid[:,::16,::16,:] , (0, 3, 1,2))
 
 
 input = torch.from_numpy(X_train).float()
@@ -98,7 +98,7 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 32
+hidden_size = 16
 max_epochs = 20
 lr = 3e-4
 beta =100
