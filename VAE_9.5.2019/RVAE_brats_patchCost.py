@@ -26,7 +26,7 @@ random.seed(8)
 
 
 def show_and_save(file_name, img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE_2/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_patch/%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -81,7 +81,7 @@ input_channels = 3
 hidden_size = 64
 max_epochs = 40
 lr = 3e-4
-beta = 1e-7
+beta = 0.1
 
 #######network################
 epoch=40
@@ -160,32 +160,52 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
 def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
-    size = 64 # patch size
-    stride = 64 # patch stride
-    patches = x_temp.unfold(1, size, stride).unfold(2, size, stride).unfold(3, size, stride)
-    print(patches.shape)
+    
+    size = 4# patch size
+    stride =4 # patch stride
+    patches = x_temp.unfold(1, 3, 3).unfold(2, size, stride).unfold(3, size, stride)
+    #print(patches.shape)
+    #patches.view(-1, 3*size*size)
+    x_temp=patches.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
+    msk = torch.tensor(x_temp > 1e-6).float()
+    
+    NDim = torch.sum(msk)
+
+    recon_x=recon_x.unfold(1, 3, stride).unfold(2, size, stride).unfold(3, size, stride)
+    recon_x=recon_x.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
+
+    logvar_x=logvar_x.unfold(1, 3, stride).unfold(2, size, stride).unfold(3, size, stride)
+    logvar_x=logvar_x.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
+    logvar_x=logvar_x*msk
+
 
 
     std = logvar_x.mul(0.5).exp_()
-    std_all_beta = (std**beta).prod()
+    std_all_beta2=((std**2)*(2.0 * math.pi))
+    std_all_beta2 = torch.prod( std_all_beta2,1)
+    std_all_beta2=torch.prod( std_all_beta2,1)
+    std_all_beta2 = torch.prod( std_all_beta2,1)
 
     #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
     #                                            (beta / 2)))
-    term1 = -(beta + 1) / (beta * std_all_beta *
-                           torch.pow(torch.tensor(2.0 * math.pi),
-                                     (beta / 2.0)))
+    term1 = 1/(std_all_beta2**(beta/2))
 
-    term2 = torch.sum((((recon_x - x_temp) / std)**2), (1, 2, 3))
+    std_all_beta=((std)*(2.0 * math.pi))
+    std_all_beta = torch.prod( std_all_beta,1)
+    std_all_beta=torch.prod( std_all_beta,1)
+    std_all_beta = torch.prod( std_all_beta,1)
+
+    term2 = torch.sum((((recon_x - x_temp) *msk/ std)**2), (1, 2, 3))
     term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = 1 / (std_all_beta * (((beta + 1) * ((2 * math.pi)**beta))**0.5))
+    term3 = (1 / (std_all_beta*((beta+1)**NDim)))
 
-    prob_term = term1 * term2 + term3
+    prob_term = -((beta+1)/beta)*( term2 -1)+ #term3
 
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return -BBCE + KLD
+    return BBCE + KLD
 
 
 ################################
