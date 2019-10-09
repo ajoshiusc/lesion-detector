@@ -169,19 +169,21 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp=patches.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
     msk = torch.tensor(x_temp > 1e-6).float()
     
-    NDim = torch.sum(msk)
+    NDim = torch.sum(msk,(1,2,3))
 
     recon_x=recon_x.unfold(1, 3, stride).unfold(2, size, stride).unfold(3, size, stride)
     recon_x=recon_x.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
 
     logvar_x=logvar_x.unfold(1, 3, stride).unfold(2, size, stride).unfold(3, size, stride)
     logvar_x=logvar_x.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
-    logvar_x=logvar_x*msk
+    #logvar_x=logvar_x*msk
 
 
 
     std = logvar_x.mul(0.5).exp_()
     std_all_beta2=((std**2)*(2.0 * math.pi))
+    std_all_beta2[x_temp > 1e-6]=1
+
     std_all_beta2 = torch.prod( std_all_beta2,1)
     std_all_beta2=torch.prod( std_all_beta2,1)
     std_all_beta2 = torch.prod( std_all_beta2,1)
@@ -190,14 +192,16 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     #                                            (beta / 2)))
     term1 = 1/(std_all_beta2**(beta/2))
 
-    std_all_beta=((std)*(2.0 * math.pi))
+    std_all_beta=((std)*((2.0 * math.pi)**0.5))
+    std_all_beta[x_temp > 1e-6]=1
+
     std_all_beta = torch.prod( std_all_beta,1)
     std_all_beta=torch.prod( std_all_beta,1)
     std_all_beta = torch.prod( std_all_beta,1)
 
     term2 = torch.sum((((recon_x - x_temp) *msk/ std)**2), (1, 2, 3))
     term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = (1 / (std_all_beta*((beta+1)**NDim)))
+    term3 = (1 / (std_all_beta**beta*((beta+1)**(NDim/2))))
 
     prob_term = -((beta+1)/beta)*(term1* term2 -1)+ term3
 
