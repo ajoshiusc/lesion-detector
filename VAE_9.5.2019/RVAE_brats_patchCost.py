@@ -199,7 +199,7 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     term2 = torch.exp(-(0.5 * beta * term2))
     term3 = (1 / (std_all_beta*((beta+1)**NDim)))
 
-    prob_term = -((beta+1)/beta)*( term2 -1)+ #term3
+    prob_term = -((beta+1)/beta)*(term1* term2 -1)+ term3
 
     BBCE = torch.sum(prob_term / 10)
 
