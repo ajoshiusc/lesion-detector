@@ -70,16 +70,16 @@ class Decoder(nn.Module):
             nn.ReLU())
         
             # 256 x 2 x 2
-        self.deconv1 = nn.ConvTranspose2d(representation_size[0], 32, 5, stride=2, padding=2)
-        self.act1 = nn.Sequential(nn.BatchNorm2d(256),
+        self.deconv1 = nn.ConvTranspose2d(representation_size[0], 32, 5, stride=2, padding=3)
+        self.act1 = nn.Sequential(nn.BatchNorm2d(32),
                                   nn.ReLU())
             # 256 x 4 x 4
         self.deconv2 = nn.ConvTranspose2d(32, 16, 5, stride=2, padding=2)
-        self.act2 = nn.Sequential(nn.BatchNorm2d(128),
+        self.act2 = nn.Sequential(nn.BatchNorm2d(16),
                                   nn.ReLU())
             # 128 x 8 x 8
         self.deconv3 = nn.ConvTranspose2d(16, 16, 5, stride=2, padding=2)
-        self.act3 = nn.Sequential(nn.BatchNorm2d(32),
+        self.act3 = nn.Sequential(nn.BatchNorm2d(16),
                                   nn.ReLU())
             # 32 x 128 x 128
         self.deconv4 = nn.ConvTranspose2d(16, 3, 5, stride=1, padding=2)
@@ -108,7 +108,7 @@ class Decoder(nn.Module):
         #output_mu= self.activation(output_mu)
 
         output_logvar = self.deconv5(output, output_size=(bs, 3, 8, 8))
-        #output_logvar= -2*self.activation2(output_logvar)
+        output_logvar= -self.relu(output_logvar)
         return output_mu, output_logvar
 
 

@@ -20,7 +20,7 @@ import random
 import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
-from VAE_model_pixel8 import Encoder, Decoder, VAE_Generator
+from VAE_model_pixel import Encoder, Decoder, VAE_Generator
 pret = 0
 random.seed(8)
 input_size=8
@@ -79,8 +79,8 @@ X = X.astype('float64')
 
 #X_train, X_valid = train_test_split(X, test_size=0.2, random_state=10002,shuffle=False)
 X_valid,X_test=train_test_split(X_valid, test_size=0.25, random_state=10001,shuffle=False)
-X_train = np.transpose(X_train[:,::16,::16,:], (0, 3, 1,2))
-X_valid = np.transpose(X_valid[:,::16,::16,:] , (0, 3, 1,2))
+X_train = np.transpose(X_train[:,:,:,:], (0, 3, 1,2))
+X_valid = np.transpose(X_valid[:,:,:,:] , (0, 3, 1,2))
 
 
 input = torch.from_numpy(X_train).float()
@@ -98,10 +98,10 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 16
+hidden_size = 128
 max_epochs = 20
 lr = 3e-4
-beta =100
+beta =0.1
 
 #######network################
 epoch=39
@@ -196,8 +196,8 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
 
 
     std = logvar_x.mul(0.5).exp_()
-    std_all_beta2=((std**2)*(2.0 * math.pi))
-    std_all_beta2[x_temp > 1e-6]=1
+    std_all_beta2=(((std**2)*(2.0 * math.pi)))**(beta/2)
+    std_all_beta2[msk==0]=1
 
     std_all_beta2 = torch.prod( std_all_beta2,1)
     std_all_beta2=torch.prod( std_all_beta2,1)
@@ -205,20 +205,17 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
 
     #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
     #                                            (beta / 2)))
-    term1 = 1/(std_all_beta2**(beta/2))
+    term1 = 1/(std_all_beta2)
 
-    std_all_beta=((std)*((2.0 * math.pi)**0.5))
-    std_all_beta[x_temp > 1e-6]=1
+    
 
-    std_all_beta = torch.prod( std_all_beta,1)
-    std_all_beta=torch.prod( std_all_beta,1)
-    std_all_beta = torch.prod( std_all_beta,1)
+   
 
     term2 = torch.sum((((recon_x - x_temp) *msk/ std)**2), (1, 2, 3))
-    term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = (1 / (std_all_beta**beta*((beta+1)**(NDim/2))))
+    term2 = torch.exp(-(0.5 * beta * term2))-(beta/((beta+1)**((NDim+2)/2)))
+    
 
-    prob_term = -((beta+1)/beta)*(term1* term2 -1)+ term3
+    prob_term = -((beta+1)/beta)*(term1* term2 -1)
 
     BBCE = torch.sum(prob_term / 10)
 
