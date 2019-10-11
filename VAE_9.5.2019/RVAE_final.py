@@ -95,8 +95,8 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 input_channels = 3
 hidden_size = 128
 max_epochs = 20
-lr = 3e-6
-beta =0.1
+lr = 1e-4
+beta =1e-8
 
 #######network################
 epoch=20
@@ -186,43 +186,7 @@ def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
 
     return BBCE + KLD
 
-def beta_log_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
-    x_temp = x.repeat(10, 1, 1, 1)
-    
-    
-    msk = torch.tensor(x_temp > 1e-6).float()
-    NDim = torch.sum(msk,(1,2,3))
 
-    
-
-
-
-    std = logvar_x.mul(0.5).exp_()
-    std_all_beta2=(((std**2)*(2.0 * math.pi)))**(beta/2)
-    std_all_beta2[msk==0]=1
-
-    std_all_beta2 = torch.sum( torch.log(std_all_beta2),(1,2,3))
-    
-
-    #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
-    #                                            (beta / 2)))
-    term1 = 1/(std_all_beta2)
-
-    
-
-   
-
-    term2 = torch.sum((((recon_x - x_temp) *msk/ std)**2), (1, 2, 3))
-    term2 = (-(0.5 * beta * term2))-(beta/((beta+1)**((NDim+2)/2)))
-    
-
-    prob_term = -((beta+1)/beta)*(torch.exp(term1+ term2) -1)
-
-    BBCE = torch.sum(prob_term / 10)
-
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-    return BBCE + KLD
 
 ################################
 
@@ -248,7 +212,7 @@ for epoch in range(max_epochs):
             prob_err = prob_loss_function(rec_enc, var_enc, datav, mean,
                                           logvar)
         else:
-            prob_err = beta_log_prob_loss_function(rec_enc, var_enc, datav, mean,
+            prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
                                                logvar, beta)
         err_enc = prob_err
         opt_enc.zero_grad()
@@ -266,7 +230,7 @@ for epoch in range(max_epochs):
                 prob_err = prob_loss_function(valid_enc, valid_var_enc, data,
                                               mean, logvar)
             else:
-                prob_err = beta_log_prob_loss_function(valid_enc, valid_var_enc,
+                prob_err = beta_prob_loss_function(valid_enc, valid_var_enc,
                                                    data, mean, logvar, beta)
             valid_loss += prob_err.item()
         valid_loss /= len(Validation_loader.dataset)

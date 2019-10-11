@@ -157,8 +157,49 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
     return -BBCE + KLD
 
-
 def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
+    x_temp = x.repeat(10, 1, 1, 1)
+    
+    
+    msk = torch.tensor(x_temp > 1e-6).float()
+    NDim = torch.sum(msk,(1,2,3))
+
+    
+
+
+
+    std = logvar_x.mul(0.5).exp_()
+    std_all_beta2=((std**2)*(2.0 * math.pi))
+    std_all_beta2[x_temp > 1e-6]=1
+
+    std_all_beta2 = torch.prod( std_all_beta2,1)
+    std_all_beta2=torch.prod( std_all_beta2,1)
+    std_all_beta2 = torch.prod( std_all_beta2,1)
+
+    #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
+    #                                            (beta / 2)))
+    term1 = 1/(std_all_beta2**(beta/2))
+
+    std_all_beta=((std)*((2.0 * math.pi)**0.5))
+    std_all_beta[x_temp > 1e-6]=1
+
+    std_all_beta = torch.prod( std_all_beta,1)
+    std_all_beta=torch.prod( std_all_beta,1)
+    std_all_beta = torch.prod( std_all_beta,1)
+
+    term2 = torch.sum((((recon_x - x_temp) *msk/ std)**2), (1, 2, 3))
+    term2 = torch.exp(-(0.5 * beta * term2))
+    term3 = (1 / (std_all_beta**beta*((beta+1)**(NDim/2))))
+
+    prob_term = -((beta+1)/beta)*(term1* term2 -1)+ term3
+
+    BBCE = torch.sum(prob_term / 10)
+
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    return BBCE + KLD
+
+def beta_prob_loss_function_batch(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
     
     size = 4# patch size

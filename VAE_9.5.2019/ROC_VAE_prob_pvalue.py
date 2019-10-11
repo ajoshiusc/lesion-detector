@@ -76,7 +76,7 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=35
+epoch=3
 LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_hiseq'
 
 ##########load low res net##########

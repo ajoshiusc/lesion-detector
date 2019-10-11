@@ -26,7 +26,7 @@ random.seed(8)
 
 
 def show_and_save(file_name, img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results_RVAE_2/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_gamma/%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -79,12 +79,12 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 ###### define constant########
 input_channels = 3
 hidden_size = 64
-max_epochs = 100
+max_epochs = 40
 lr = 3e-4
-beta = 1e-7
+beta = 100
 
 #######network################
-epoch=40
+epoch=39
 LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
@@ -158,22 +158,25 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
     return -BBCE + KLD
 
 
-def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
+def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
+    NDim = torch.sum(msk)
 
-    std = logvar_x.mul(0.5).exp_() * msk + 1e-16
-    beta = torch.tensor(beta).cuda()
-    log_std_all_beta = (torch.log(std) * msk * beta).sum()
+    std = logvar_x.mul(0.5).exp_()
+    #std_all=torch.prod(std,dim=1)
+    const = torch.sum(logvar_x * msk, (1, 2, 3)) / 2
+    #const=const.repeat(10,1,1,1) ##check if it is correct
+    const2 = (NDim / 2) * math.log((2 * math.pi))
 
-    term1=math.log((2 * math.pi)**0.5)+log_std_all_beta
-    term2 = 0.5 *torch.sum(((msk * (recon_x - x_temp) / std)**2), (1, 2, 3))
-    term3=-(beta/beta+1)*log_std_all_beta 
-    term4=-(1/beta+1)*math.log(((beta+1)*((2 * math.pi)**beta))**0.5)
+    term1 = (0.5) * torch.sum((((recon_x - x_temp) * msk / std)**2), (1, 2, 3))
 
-  
+    #term2=torch.log(const+0.0000000000001)
+    term2 = -(beta / (beta + 1)) * torch.sum(logvar_x.mul(0.5)*msk, (1, 2, 3))
+    term3 = -(1 / (beta + 1)) * 0.5 * (NDim * beta * math.log(
+        ((2 * math.pi))) + math.log(beta + 1))
+    prob_term = const + const2 + (term1)  + term2 + term3
 
-    prob_term = term1+term2+term3+term4
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
@@ -205,7 +208,7 @@ for epoch in range(max_epochs):
             prob_err = prob_loss_function(rec_enc, var_enc, datav, mean,
                                           logvar)
         else:
-            prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
+            prob_err = gamma_prob_loss_function(rec_enc, var_enc, datav, mean,
                                                logvar, beta)
         err_enc = prob_err
         opt_enc.zero_grad()
@@ -223,7 +226,7 @@ for epoch in range(max_epochs):
                 prob_err = prob_loss_function(valid_enc, valid_var_enc, data,
                                               mean, logvar)
             else:
-                prob_err = beta_prob_loss_function(valid_enc, valid_var_enc,
+                prob_err = gamma_prob_loss_function(valid_enc, valid_var_enc,
                                                    data, mean, logvar, beta)
             valid_loss += prob_err.item()
         valid_loss /= len(Validation_loader.dataset)

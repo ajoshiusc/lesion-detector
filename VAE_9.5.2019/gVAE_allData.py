@@ -27,7 +27,7 @@ input_size=64
 
 
 def show_and_save(file_name, img):
-    f = "./Prob_VAE_original_final/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/all_data_RVAE/%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -54,19 +54,23 @@ def load_model(epoch, encoder, decoder, loc):
 
 
 
-d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data__maryland_histeq.npz')
+d=np.load('data__maryland_histeq.npz')
 X=d['data']
 X=X[0:2380,:,:,:]
 X_train=X[0:-20*20,:,:,:]
 X_valid=X[-20*20:,:,:,:]
 
 
-d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data__TBI_histeq.npz')
-X_train=np.concatenate((X_train,d['data'][0:-20*20,:,:,:]))
-X_valid=np.concatenate((X_valid,d['data'][-20*20:,:,:,:]))
+d=np.load('data__TBI_histeq.npz')
+X_train=np.rot90(np.concatenate((X_train,d['data'][0:-20*20,:,:,:]),axis=0), k=3, axes=(1, 2))
+X_valid=np.rot90(np.concatenate((X_valid,d['data'][-20*20:,:,:,:]),axis=0),k=3, axes=(1, 2))
 
 
-
+d=np.load('Brats2015_HGG.npz')
+X_data=d['data']
+X_data=np.rot90(X_data[:,:,:,0:3], k=1, axes=(1, 2))
+X_train=np.concatenate((X_train,X_data[0:-20*40,:,:,:]),axis=0)
+X_valid=np.concatenate((X_valid,X_data[-20*40:,:,:,:]),axis=0)
 
 
 
@@ -94,15 +98,14 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 128
-
-max_epochs = 40
-lr = 3e-5
-beta =0
+hidden_size = 32
+max_epochs = 20
+lr = 3e-4
+beta =100
 
 #######network################
-#epoch=20
-#LM='./Brats_results'
+epoch=39
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -124,7 +127,7 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
     # x = batch_sz x channel x dim1 x dim2
     x_temp = x.repeat(10, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
-    NDim = torch.sum(msk,(1,2,3))
+    NDim = torch.sum(msk)
 
     std = var_x.mul(0.5).exp_()
     #std_all=torch.prod(std,dim=1)
@@ -146,7 +149,7 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
     loss = 0.1 * (h_variance + w_variance)
 
 
-    return -BBCE + KLD#loss
+    return -BBCE + KLD+loss
 
 
 def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):

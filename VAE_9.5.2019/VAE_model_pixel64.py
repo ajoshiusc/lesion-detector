@@ -111,7 +111,7 @@ class Decoder(nn.Module):
         #output_mu= self.activation(output_mu)
 
         output_logvar = self.deconv5(output, output_size=(bs, 3, 64, 64))
-        #output_logvar= -2*self.activation2(output_logvar)
+        #output_logvar= self.relu(output_logvar)
         return output_mu, output_logvar
 
 
