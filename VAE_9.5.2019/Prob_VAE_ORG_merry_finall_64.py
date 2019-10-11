@@ -27,7 +27,7 @@ input_size=64
 
 
 def show_and_save(file_name, img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Prob_VAE_original_final/%s.png" % file_name
+    f = "./Prob_VAE_original_final/%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -54,14 +54,14 @@ def load_model(epoch, encoder, decoder, loc):
 
 
 
-d=np.load('data__maryland_histeq.npz')
+d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data__maryland_histeq.npz')
 X=d['data']
 X=X[0:2380,:,:,:]
 X_train=X[0:-20*20,:,:,:]
 X_valid=X[-20*20:,:,:,:]
 
 
-d=np.load('data__TBI_histeq.npz')
+d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data__TBI_histeq.npz')
 X_train=np.concatenate((X_train,d['data'][0:-20*20,:,:,:]))
 X_valid=np.concatenate((X_valid,d['data'][-20*20:,:,:,:]))
 
@@ -96,12 +96,12 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 input_channels = 3
 hidden_size = 128
 max_epochs = 40
-lr = 3e-4
+lr = 3e-5
 beta =0
 
 #######network################
-epoch=20
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
+#epoch=20
+#LM='./Brats_results'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()

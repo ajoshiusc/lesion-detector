@@ -83,14 +83,14 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 ############################################
 
 input_channels = 3
-hidden_size = 64
+hidden_size = 32
 max_epochs = 20
 lr = 3e-4
-beta = 0
+beta = 1
 device = 'cuda'
 #########################################
-epoch = 3
-LM = '/home/ajoshi/coding_ground/lesion-detector/VAE_9.5.2019/beta0_64'
+epoch = 19
+LM = '/home/ajoshi/coding_ground/lesion-detector/VAE_9.5.2019'
 
 ##########load low res net##########
 G = VAE_Generator(input_channels, hidden_size).cuda()
@@ -220,7 +220,7 @@ def Validation(X):
                 median = 1 - st.norm.sf(abs(median)) * 2
 
                 median = scipy.signal.medfilt(median, (1, 1, 7, 7))
-                scale = 0.05 / (64 * 64)
+                scale = 0.05 
                 median[median < 1 - scale] = 0
                 #median=1-median
                 median = median.astype('float32')

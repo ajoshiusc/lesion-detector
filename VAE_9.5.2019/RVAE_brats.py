@@ -71,7 +71,7 @@ X_valid = np.transpose(X_valid, (0, 3, 1, 2))
 input = torch.from_numpy(X_train).float()
 validation_data = torch.from_numpy(X_valid).float()
 
-batch_size = 8
+batch_size = 2
 
 train_loader = torch.utils.data.DataLoader(input,
                                            batch_size=batch_size,
