@@ -95,7 +95,7 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 ###### define constant########
 input_channels = 3
 hidden_size = 128
-max_epochs = 40
+max_epochs = 20
 lr = 3e-4
 beta =0
 

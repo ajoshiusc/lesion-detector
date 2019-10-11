@@ -20,13 +20,14 @@ import random
 import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
-from VAE_model_pixel import Encoder, Decoder, VAE_Generator
+from VAE_model_pixel64 import Encoder, Decoder, VAE_Generator
 pret = 0
 random.seed(8)
+input_size=64
 
 
 def show_and_save(file_name, img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_patch/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/all_data_RVAE/%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -51,16 +52,35 @@ def load_model(epoch, encoder, decoder, loc):
   
 
 
-d=np.load('Brats2015_HGG.npz')
+
+
+d=np.load('data__maryland_histeq.npz')
 X=d['data']
-X=X[:,:,:,0:3]
+X=X[0:2380,:,:,:]
+X_train=X[0:-20*20,:,:,:]
+X_valid=X[-20*20:,:,:,:]
+
+
+d=np.load('data__TBI_histeq.npz')
+X_train=np.rot90(np.concatenate((X_train,d['data'][0:-20*20,:,:,:]),axis=0), k=3, axes=(1, 2))
+X_valid=np.rot90(np.concatenate((X_valid,d['data'][-20*20:,:,:,:]),axis=0),k=3, axes=(1, 2))
+
+
+d=np.load('Brats2015_HGG.npz')
+X_data=d['data']
+X_data=np.rot90(X_data[:,:,:,0:3], k=1, axes=(1, 2))
+X_train=np.concatenate((X_train,X_data[0:-20*40,:,:,:]),axis=0)
+X_valid=np.concatenate((X_valid,X_data[-20*40:,:,:,:]),axis=0)
+
+
+
+
 X = X.astype('float64')
-max_val=np.max(X)
-#X = X/ max_val
-X_train, X_valid = train_test_split(X, test_size=0.2, random_state=10002,shuffle=False)
-X_valid,X_test=train_test_split(X_valid, test_size=0.5, random_state=10001,shuffle=False)
-X_train = np.transpose(X_train, (0, 3, 1,2))
-X_valid = np.transpose(X_valid , (0, 3, 1,2))
+
+#X_train, X_valid = train_test_split(X, test_size=0.2, random_state=10002,shuffle=False)
+X_valid,X_test=train_test_split(X_valid, test_size=0.25, random_state=10001,shuffle=False)
+X_train = np.transpose(X_train[:,::2,::2,:], (0, 3, 1,2))
+X_valid = np.transpose(X_valid[:,::2,::2,:] , (0, 3, 1,2))
 
 
 input = torch.from_numpy(X_train).float()
@@ -78,13 +98,13 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                           shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 64
-max_epochs = 40
+hidden_size = 32
+max_epochs = 20
 lr = 3e-4
-beta = 0.1
+beta =100
 
 #######network################
-epoch=40
+epoch=39
 LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
@@ -99,45 +119,15 @@ fixed_batch = Variable(data).cuda()
 #######losss#################
 
 
-def MSE_loss(Y, X):
-    ret = (X - Y)**2
-    ret = torch.sum(ret, 1)
-    return ret
 
 
-def BMSE_loss(Y, X, beta, sigma, Dim):
-    term1 = -((1 + beta) / beta)
-    K1 = 1 / pow((2 * math.pi * (sigma**2)), (beta * Dim / 2))
-    term2 = MSE_loss(Y, X)
-    term3 = torch.exp(-(beta / (2 * (sigma**2))) * term2)
-    loss1 = torch.sum(term1 * (K1 * term3 - 1))
-    return loss1
-
-
-# Reconstruction + KL divergence losses summed over all elements and batch
-def beta_loss_function(recon_x, x, mu, logvar, beta):
-
-    if beta > 0:
-        sigma = 1
-        # If beta is nonzero, use the beta entropy
-        BBCE = BMSE_loss(recon_x.view(-1, 128 * 128 * 3),
-                         x.view(-1, 128 * 128 * 3), beta, sigma, 128 * 128 * 3)
-    else:
-        # if beta is zero use binary cross entropy
-        BBCE = torch.sum(
-            MSE_loss(recon_x.view(-1, 128 * 128 * 3),
-                     x.view(-1, 128 * 128 * 3)))
-
-    # compute KL divergence
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-    return BBCE + KLD
 
 
 def prob_loss_function(recon_x, var_x, x, mu, logvar):
     # x = batch_sz x channel x dim1 x dim2
     x_temp = x.repeat(10, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
+    NDim = torch.sum(msk)
 
     std = var_x.mul(0.5).exp_()
     #std_all=torch.prod(std,dim=1)
@@ -146,7 +136,7 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
 
 
     term1 = torch.sum((((recon_x - x_temp)*msk / std)**2), (1, 2, 3))
-    const2 = -((128 * 128 * 3) / 2) * math.log((2 * math.pi))
+    const2 = -(NDim / 2) * math.log((2 * math.pi))
 
     #term2=torch.log(const+0.0000000000001)
     prob_term = const + (-(0.5) * term1) + const2
@@ -154,109 +144,48 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    w_variance = torch.sum(torch.pow(recon_x[:,:,:,:-1] - recon_x[:,:,:,1:], 2))
+    h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
+    loss = 0.1 * (h_variance + w_variance)
 
-    return -BBCE + KLD
 
-def beta_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
+    return -BBCE + KLD+loss
+
+
+def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     x_temp = x.repeat(10, 1, 1, 1)
-    
-    
     msk = torch.tensor(x_temp > 1e-6).float()
-    NDim = torch.sum(msk,(1,2,3))
-
-    
-
-
+    NDim = torch.sum(msk)
 
     std = logvar_x.mul(0.5).exp_()
-    std_all_beta2=((std**2)*(2.0 * math.pi))
-    std_all_beta2[x_temp > 1e-6]=1
+    #std_all=torch.prod(std,dim=1)
+    const = torch.sum(logvar_x * msk, (1, 2, 3)) / 2
+    #const=const.repeat(10,1,1,1) ##check if it is correct
+    const2 = (NDim / 2) * math.log((2 * math.pi))
 
-    std_all_beta2 = torch.prod( std_all_beta2,1)
-    std_all_beta2=torch.prod( std_all_beta2,1)
-    std_all_beta2 = torch.prod( std_all_beta2,1)
+    term1 = (0.5) * torch.sum((((recon_x - x_temp) * msk / std)**2), (1, 2, 3))
 
-    #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
-    #                                            (beta / 2)))
-    term1 = 1/(std_all_beta2**(beta/2))
-
-    std_all_beta=((std)*((2.0 * math.pi)**0.5))
-    std_all_beta[x_temp > 1e-6]=1
-
-    std_all_beta = torch.prod( std_all_beta,1)
-    std_all_beta=torch.prod( std_all_beta,1)
-    std_all_beta = torch.prod( std_all_beta,1)
-
-    term2 = torch.sum((((recon_x - x_temp) *msk/ std)**2), (1, 2, 3))
-    term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = (1 / (std_all_beta**beta*((beta+1)**(NDim/2))))
-
-    prob_term = -((beta+1)/beta)*(term1* term2 -1)+ term3
+    #term2=torch.log(const+0.0000000000001)
+    term2 = -(beta / (beta + 1)) * torch.sum(logvar_x.mul(0.5)*msk, (1, 2, 3))
+    term3 = -(1 / (beta + 1)) * 0.5 * NDim* (beta * math.log(
+        ((2 * math.pi))) + math.log(beta + 1))
+    prob_term = const + const2 + (term1)  + term2 + term3
 
     BBCE = torch.sum(prob_term / 10)
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BBCE + KLD
+    w_variance = torch.sum(torch.pow(recon_x[:,:,:,:-1] - recon_x[:,:,:,1:], 2))
+    h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
+    loss = 0.1 * (h_variance + w_variance)
 
-def beta_prob_loss_function_batch(recon_x, logvar_x, x, mu, logvar, beta):
-    x_temp = x.repeat(10, 1, 1, 1)
-    
-    size = 4# patch size
-    stride =4 # patch stride
-    patches = x_temp.unfold(1, 3, 3).unfold(2, size, stride).unfold(3, size, stride)
-    #print(patches.shape)
-    #patches.view(-1, 3*size*size)
-    x_temp=patches.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
-    msk = torch.tensor(x_temp > 1e-6).float()
-    
-    NDim = torch.sum(msk,(1,2,3))
-
-    recon_x=recon_x.unfold(1, 3, stride).unfold(2, size, stride).unfold(3, size, stride)
-    recon_x=recon_x.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
-
-    logvar_x=logvar_x.unfold(1, 3, stride).unfold(2, size, stride).unfold(3, size, stride)
-    logvar_x=logvar_x.contiguous().view(-1, 2,2,3,size,size).contiguous().view(-1,2,3,size,size).contiguous().view(-1,3,size,size)
-    #logvar_x=logvar_x*msk
-
-
-
-    std = logvar_x.mul(0.5).exp_()
-    std_all_beta2=((std**2)*(2.0 * math.pi))
-    std_all_beta2[x_temp > 1e-6]=1
-
-    std_all_beta2 = torch.prod( std_all_beta2,1)
-    std_all_beta2=torch.prod( std_all_beta2,1)
-    std_all_beta2 = torch.prod( std_all_beta2,1)
-
-    #    term1 = -(beta + 1) / (beta * torch.pow(((std_all**2) * (2 * math.pi)),
-    #                                            (beta / 2)))
-    term1 = 1/(std_all_beta2**(beta/2))
-
-    std_all_beta=((std)*((2.0 * math.pi)**0.5))
-    std_all_beta[x_temp > 1e-6]=1
-
-    std_all_beta = torch.prod( std_all_beta,1)
-    std_all_beta=torch.prod( std_all_beta,1)
-    std_all_beta = torch.prod( std_all_beta,1)
-
-    term2 = torch.sum((((recon_x - x_temp) *msk/ std)**2), (1, 2, 3))
-    term2 = torch.exp(-(0.5 * beta * term2))
-    term3 = (1 / (std_all_beta**beta*((beta+1)**(NDim/2))))
-
-    prob_term = -((beta+1)/beta)*(term1* term2 -1)+ term3
-
-    BBCE = torch.sum(prob_term / 10)
-
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-    return BBCE + KLD
+    return BBCE + KLD+loss
 
 
 ################################
 
-if pret == 1:
-    load_model(499, G.encoder, G.decoder)
+#if pret == 1:
+   #oad_model(499, G.encoder, G.decoder)
 
 ##############train#####################
 train_loss = 0
@@ -277,7 +206,7 @@ for epoch in range(max_epochs):
             prob_err = prob_loss_function(rec_enc, var_enc, datav, mean,
                                           logvar)
         else:
-            prob_err = beta_prob_loss_function(rec_enc, var_enc, datav, mean,
+            prob_err = gamma_prob_loss_function(rec_enc, var_enc, datav, mean,
                                                logvar, beta)
         err_enc = prob_err
         opt_enc.zero_grad()
@@ -295,7 +224,7 @@ for epoch in range(max_epochs):
                 prob_err = prob_loss_function(valid_enc, valid_var_enc, data,
                                               mean, logvar)
             else:
-                prob_err = beta_prob_loss_function(valid_enc, valid_var_enc,
+                prob_err = gamma_prob_loss_function(valid_enc, valid_var_enc,
                                                    data, mean, logvar, beta)
             valid_loss += prob_err.item()
         valid_loss /= len(Validation_loader.dataset)

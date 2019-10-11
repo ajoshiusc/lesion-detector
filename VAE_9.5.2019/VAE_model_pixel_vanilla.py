@@ -8,6 +8,9 @@ from torchvision import datasets, transforms
 import torchvision.utils as vutils
 
 
+
+
+##########define network##########
 class Encoder(nn.Module):
     def __init__(self, input_channels, output_channels, representation_size = 64):
         super(Encoder, self).__init__()
@@ -31,13 +34,13 @@ class Encoder(nn.Module):
             # hidden_size*4 x 16x 16
             
         self.mean = nn.Sequential(
-            nn.Linear(representation_size*4*16*16, 2048),
+            nn.Linear(representation_size*4*8*8, 2048),
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, output_channels))
         
         self.logvar = nn.Sequential(
-            nn.Linear(representation_size*4*16*16, 2048),
+            nn.Linear(representation_size*4*8*8, 2048),
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, output_channels))
@@ -83,9 +86,11 @@ class Decoder(nn.Module):
                                   nn.ReLU())
             # 32 x 128 x 128
         self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
+        self.deconv5 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
             # 3 x 128 x 128
         self.activation = nn.Tanh()
-            
+        self.relu=nn.ReLU()
+        self.activation2=nn.Sigmoid()    
     
     def forward(self, code):
         bs = code.size()[0]
@@ -94,18 +99,23 @@ class Decoder(nn.Module):
                                                      self.representation_size[0],
                                                      self.representation_size[1],
                                                      self.representation_size[2])
-        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 32, 32))
+        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
         output = self.act1(output)
-        output = self.deconv2(output, output_size=(bs, 128, 64, 64))
+        output = self.deconv2(output, output_size=(bs, 128, 32, 32))
         output = self.act2(output)
-        output = self.deconv3(output, output_size=(bs, 32, 128, 128))
+        output = self.deconv3(output, output_size=(bs, 32, 64, 64))
         output = self.act3(output)
-        output = self.deconv4(output, output_size=(bs, 3, 128, 128))
-        output = self.activation(output)
+        output=self.activation(output)
+        output = self.deconv5(output, output_size=(bs, 3, 64, 64))
+
+       
         return output
-class VAE_GAN_Generator(nn.Module):
-    def __init__(self, input_channels, hidden_size, representation_size=(256, 16, 16)):
-        super(VAE_GAN_Generator, self).__init__()
+
+
+
+class VAE_Generator(nn.Module):
+    def __init__(self, input_channels, hidden_size, representation_size=(256, 8, 8)):
+        super(VAE_Generator, self).__init__()
         self.input_channels = input_channels
         self.hidden_size = hidden_size
         self.representation_size = representation_size
@@ -125,3 +135,6 @@ class VAE_GAN_Generator(nn.Module):
         rec_images = self.decoder(reparametrized_noise)
         
         return mean, logvar, rec_images
+
+
+#################################
