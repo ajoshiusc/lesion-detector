@@ -54,14 +54,14 @@ def load_model(epoch, encoder, decoder, loc):
 
 
 
-d=np.load('data__maryland_histeq.npz')
+d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data__maryland_histeq.npz')
 X=d['data']
 X=X[0:2380,:,:,:]
 X_train=X[0:-20*20,:,:,:]
 X_valid=X[-20*20:,:,:,:]
 
 
-d=np.load('data__TBI_histeq.npz')
+d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data__TBI_histeq.npz')
 X_train=np.concatenate((X_train,d['data'][0:-20*20,:,:,:]))
 X_valid=np.concatenate((X_valid,d['data'][-20*20:,:,:,:]))
 
@@ -102,8 +102,8 @@ lr = 3e-4
 beta =0
 
 #######network################
-epoch=20
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
+#epoch=20
+#LM='./Brats_results'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
