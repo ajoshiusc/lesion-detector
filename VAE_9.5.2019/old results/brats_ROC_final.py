@@ -37,6 +37,7 @@ def load_model(epoch, encoder, decoder, loc):
   
 
 #####read data######################
+#####read data######################
 
 d=np.load('data__maryland_histeq.npz')
 X=d['data']
@@ -53,14 +54,15 @@ X_valid=np.rot90(np.concatenate((X_valid,d['data'][-20*20:,:,:,:]),axis=0),k=3, 
 d=np.load('Brats2015_HGG.npz')
 X_data=d['data']
 
-X_test_seg=np.rot90(X_data[0:20*20,:,:,:], k=1, axes=(1, 2))
+X_test_seg=np.rot90(X_data[0:20*20,:,:,:], k=2, axes=(1, 2))
 X_test = np.transpose(X_test_seg[:,::2,::2,0:3] , (0, 3, 1,2))
 
 X_test = torch.from_numpy(X_test.copy()).float()
 
-Validation_loader = torch.utils.data.DataLoader(X_test,
+Validation_loader_inference = torch.utils.data.DataLoader(X_test,
                                           batch_size=8,
                                           shuffle=False)
+############################################
                                          
 ############################################
 
@@ -76,8 +78,8 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/RVAE_final'
+epoch=100
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/prob_VAE_with Brats'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -150,7 +152,7 @@ def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
     loss = 0.1 * (h_variance + w_variance)
 
-    return BBCE + KLD+loss
+    return BBCE + KLD
 
 batch_size=8
 ##########TEST##########
@@ -160,7 +162,7 @@ def Validation(X):
     test_loss = 0
     ind = 0
     with torch.no_grad():
-        for i, data in enumerate(Validation_loader):
+        for i, data in enumerate(Validation_loader_inference):
             data = (data).to(device)
             seg = X_test_seg[ind:ind + batch_size, ::2, ::2, 3:4]
             msk = torch.tensor(data > 1e-6).float()
@@ -200,7 +202,7 @@ def Validation(X):
                 median = 1 - st.norm.sf(abs(median)) * 2
 
                 median = scipy.signal.medfilt(median, (1, 1, 7, 7))
-                scale = 0.05
+                scale = 0.05/(64*64)
                 median[median < 1 - scale] = 0
                 #median=1-median
                 median = median.astype('float32')
@@ -217,7 +219,7 @@ def Validation(X):
                     seg.view(batch_size, 1, 64, 64)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'RVAE_final/reconstruction_br' + str(i) + '.png',
+                           'prob_VAE_with Brats/reconstruction_br' + str(i) + '.png',
                            nrow=n)
         #############save z values###############
             if i == 0:
@@ -246,7 +248,7 @@ if __name__ == "__main__":
     median = 1 - ((st.norm.sf(abs(y_probas)) * 2) )
 
     #scale=0.05/(64*64)
-    median = scipy.signal.medfilt(median, (1, 1, 7, 7))
+    #median = scipy.signal.medfilt(median, (1, 1, 7, 7))
 
     y_probas = np.reshape(median, (-1, 1))
     print(np.max(y_true))

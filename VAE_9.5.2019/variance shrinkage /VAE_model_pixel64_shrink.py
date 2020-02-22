@@ -106,10 +106,13 @@ class Decoder(nn.Module):
         output = self.deconv3(output, output_size=(bs, 32, 64, 64))
         output = self.act3(output)
         output=self.activation(output)
-        output = self.deconv5(output, output_size=(bs, 3, 64, 64))
 
-       
-        return output
+        output_mu = self.deconv4(output, output_size=(bs, 3, 64, 64))
+        #output_mu= self.activation(output_mu)
+
+        output_logvar = self.deconv5(output, output_size=(bs, 3, 64, 64))
+        #output_logvar= -self.relu(output_logvar)
+        return output_mu, output_logvar
 
 
 
@@ -128,13 +131,18 @@ class VAE_Generator(nn.Module):
         mean, logvar = self.encoder(x)
         std = logvar.mul(0.5).exp_()
         
-        reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
+        for i in range (1):
+            reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
 
-        reparametrized_noise = mean + std * reparametrized_noise
+            reparametrized_noise = mean + std * reparametrized_noise
+            if i==0:
+                rec_images,var_image = self.decoder(reparametrized_noise)
+            else:
+                rec_images_tmp,var_image_tmp=self.decoder(reparametrized_noise)
+                rec_images=torch.cat([rec_images,rec_images_tmp],0)
+                var_image=torch.cat([var_image,var_image_tmp],0)
+        return mean, logvar, rec_images,var_image
 
-        rec_images = self.decoder(reparametrized_noise)
-        
-        return mean, logvar, rec_images
 
 
 #################################

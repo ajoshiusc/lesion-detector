@@ -111,7 +111,7 @@ class Decoder(nn.Module):
         #output_mu= self.activation(output_mu)
 
         output_logvar = self.deconv5(output, output_size=(bs, 3, 64, 64))
-        #output_logvar= self.relu(output_logvar)
+        #output_logvar= -self.relu(output_logvar)
         return output_mu, output_logvar
 
 
@@ -131,7 +131,7 @@ class VAE_Generator(nn.Module):
         mean, logvar = self.encoder(x)
         std = logvar.mul(0.5).exp_()
         
-        for i in range (10):
+        for i in range (0):
             reparametrized_noise = Variable(torch.randn((batch_size, self.hidden_size))).cuda()
 
             reparametrized_noise = mean + std * reparametrized_noise

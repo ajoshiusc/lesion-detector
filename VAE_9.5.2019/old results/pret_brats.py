@@ -29,7 +29,7 @@ input_size=64
 
             
 def show_and_save(file_name,img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_original_final/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/RVAE_pre_t_brats/%s.png" % file_name
     save_image(img[2:3,:,:],f)
     
     #fig = plt.figure(dpi=300)
@@ -38,44 +38,37 @@ def show_and_save(file_name,img):
     #plt.imsave(f,npimg)
     
 def save_model(epoch, encoder, decoder):
-    torch.save(decoder.cpu().state_dict(), './VAE_GAN_decoder_%d.pth' % epoch)
-    torch.save(encoder.cpu().state_dict(),'./VAE_GAN_encoder_%d.pth' % epoch)
+    torch.save(decoder.cpu().state_dict(), 'RVAE_pre_t_brats/VAE_GAN_decoder_%d.pth' % epoch)
+    torch.save(encoder.cpu().state_dict(),'RVAE_pre_t_brats/VAE_GAN_encoder_%d.pth' % epoch)
     decoder.cuda()
     encoder.cuda()
     
     
 def load_model(epoch, encoder, decoder, D):
     #  restore models
-    decoder.load_state_dict(torch.load('./VAE_GAN_decoder_%d.pth' % epoch))
+    decoder.load_state_dict(torch.load('VAE_original_final/VAE_GAN_decoder_%d.pth' % epoch))
     decoder.cuda()
-    encoder.load_state_dict(torch.load('./VAE_GAN_encoder_%d.pth' % epoch))
+    encoder.load_state_dict(torch.load('VAE_original_final/VAE_GAN_encoder_%d.pth' % epoch))
     encoder.cuda()
 
 
 
-d=np.load('data__maryland_histeq.npz')
-X=d['data']
-X=X[0:2380,:,:,:]
-X_train=X[0:-20*20,:,:,:]
-X_valid=X[-20*20:,:,:,:]
 
 
-d=np.load('data__TBI_histeq.npz')
-X_train=np.concatenate((X_train,d['data'][0:-20*20,:,:,:]),axis=0)
-X_valid=np.concatenate((X_valid,d['data'][-20*20:,:,:,:]),axis=0)
+d=np.load('Brats2015_HGG.npz')
+X_data=d['data']
+X_data=np.rot90(X_data[0:20*80,:,:,0:3], k=2, axes=(1, 2))
+X_test=np.rot90(X_data[0:20*20,:,:,0:3], k=2, axes=(1, 2))
+X_train=X_data[20*20:20*40,:,:,:].copy()
+X_valid=X_data[20*30:,:,:,:].copy()
 
-
-
-
-
-
-
-X = X.astype('float64')
-
-#X_train, X_valid = train_test_split(X, test_size=0.2, random_state=10002,shuffle=False)
-#X_valid,X_test=train_test_split(X_valid, test_size=0.25, random_state=10001,shuffle=False)
 X_train = np.transpose(X_train[:,::2,::2,:], (0, 3, 1,2))
 X_valid = np.transpose(X_valid[:,::2,::2,:] , (0, 3, 1,2))
+
+
+
+
+
 
 
 input = torch.from_numpy(X_train).float()
@@ -94,17 +87,17 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 ###### define constant########
 input_channels = 3
 hidden_size =128
-max_epochs = 40
+max_epochs =100
 lr = 3e-4
-beta =0
+beta =0.00002
 
 #######network################
 epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_original_final'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
-#load_model(epoch,G.encoder, G.decoder,LM)
+load_model(epoch,G.encoder, G.decoder,LM)
 opt_enc = optim.Adam(G.parameters(), lr=lr)
 
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
@@ -136,7 +129,7 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
     if beta > 0:
         sigma=1
         # If beta is nonzero, use the beta entropy
-        BBCE = BMSE_loss(recon_x.view(-1, 128*128*3), x.view(-1, 128*128*3), beta,sigma,128*128*3)
+        BBCE = BMSE_loss(recon_x.view(-1, 64*64*3), x.view(-1, 64*64*3), beta,sigma,64*64*3)
     else:
         # if beta is zero use binary cross entropy
         BBCE = torch.sum(MSE_loss(recon_x.view(-1, 64*64*3),x.view(-1, 64*64*3)))
@@ -144,12 +137,16 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
     # compute KL divergence
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
+    w_variance = torch.sum(torch.pow(recon_x[:,:,:,:-1] - recon_x[:,:,:,1:], 2))
+    h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
+    loss = 0.1 * (h_variance + w_variance)
+
     return BBCE +KLD
 
 if pret==1:
     load_model(499, G.encoder, G.decoder)
 
-
+pay=0
 train_loss=0
 valid_loss=0
 valid_loss_list, train_loss_list= [], []
@@ -182,6 +179,18 @@ for epoch in range(max_epochs):
             beta_err=beta_loss_function(valid_rec, data, mean, logvar,beta) 
             valid_loss+=beta_err.item()
         valid_loss /= len(Validation_loader.dataset)
+
+    if epoch == 0:
+        best_val = valid_loss
+    elif (valid_loss < best_val):
+        save_model(epoch, G.encoder, G.decoder)
+        pay=0
+        best_val = valid_loss
+    pay=pay+1
+    if(pay==100):
+        break
+
+
 
     
     print(valid_loss)

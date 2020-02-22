@@ -27,7 +27,7 @@ input_size=64
 
 
 def show_and_save(file_name, img):
-    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Prob_VAE_original_final/%s.png" % file_name
+    f = "/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/prob_VAE_with Brats/%s.png" % file_name
     save_image(img[2:3, :, :], f, range=[0, 1.5])
 
     #fig = plt.figure(dpi=300)
@@ -37,8 +37,8 @@ def show_and_save(file_name, img):
 
 
 def save_model(epoch, encoder, decoder):
-    torch.save(decoder.cpu().state_dict(), './VAE_GAN_decoder_%d.pth' % epoch)
-    torch.save(encoder.cpu().state_dict(), './VAE_GAN_encoder_%d.pth' % epoch)
+    torch.save(decoder.cpu().state_dict(), 'prob_VAE_with Brats/VAE_GAN_decoder_%d.pth' % epoch)
+    torch.save(encoder.cpu().state_dict(), 'prob_VAE_with Brats/VAE_GAN_encoder_%d.pth' % epoch)
     decoder.cuda()
     encoder.cuda()
 
@@ -70,11 +70,13 @@ X_valid=np.concatenate((X_valid,d['data'][-20*20:,:,:,:]))
 
 
 
+d=np.load('Brats2015_HGG.npz')
+X_data=d['data']
+X_data=np.rot90(X_data[0:20*80,:,:,0:3], k=2, axes=(1, 2))
+X_test=np.rot90(X_data[0:20*20,:,:,0:3], k=2, axes=(1, 2))
+X_train=np.concatenate((X_train,X_data[20*20:20*40,:,:,:]),axis=0)
+X_valid=np.concatenate((X_valid,X_data[20*30:,:,:,:]),axis=0)
 
-X = X.astype('float64')
-
-#X_train, X_valid = train_test_split(X, test_size=0.2, random_state=10002,shuffle=False)
-X_valid,X_test=train_test_split(X_valid, test_size=0.25, random_state=10001,shuffle=False)
 X_train = np.transpose(X_train[:,::2,::2,:], (0, 3, 1,2))
 X_valid = np.transpose(X_valid[:,::2,::2,:] , (0, 3, 1,2))
 
@@ -95,7 +97,7 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
 ###### define constant########
 input_channels = 3
 hidden_size = 128
-max_epochs = 20
+max_epochs = 40
 lr = 3e-4
 beta =0
 
@@ -145,7 +147,7 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
     loss = 0.1 * (h_variance + w_variance)
 
 
-    return -BBCE + KLD#loss
+    return -BBCE + KLD
 
 
 def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
@@ -175,7 +177,7 @@ def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
     h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
     loss = 0.1 * (h_variance + w_variance)
 
-    return BBCE + KLD+loss
+    return BBCE + KLD
 
 
 ################################
@@ -186,6 +188,7 @@ def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
 ##############train#####################
 train_loss = 0
 valid_loss = 0
+pay=0
 valid_loss_list, train_loss_list = [], []
 for epoch in range(max_epochs):
     train_loss = 0
@@ -229,7 +232,12 @@ for epoch in range(max_epochs):
         best_val = valid_loss
     elif (valid_loss < best_val):
         save_model(epoch, G.encoder, G.decoder)
+        pay=0
         best_val = valid_loss
+    pay=pay+1
+    if(pay==100):
+        break
+
 
     print(valid_loss)
     train_loss_list.append(train_loss)
