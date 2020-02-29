@@ -21,6 +21,8 @@ import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
 from VAE_model import Encoder, Decoder, VAE_Generator
+from tqdm import tqdm
+
 pret = 0
 random.seed(8)
 
@@ -49,15 +51,14 @@ X2 = np.transpose(d['data'][:, ::2, ::2, :], (0, 3, 1, 2))
 
 X = np.concatenate((X, X2))
 
-
 in_data = torch.from_numpy(X).float()
 
 batch_size = 8
 
 torch.manual_seed(7)
 data_loader = torch.utils.data.DataLoader(in_data,
-                                           batch_size=batch_size,
-                                           shuffle=True)
+                                          batch_size=batch_size,
+                                          shuffle=True)
 ###### define constant########
 input_channels = 3
 hidden_size = 128
@@ -72,17 +73,19 @@ LM = '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 ##########load low res net##########
 G = VAE_Generator(input_channels, hidden_size).cuda()
 #load_model(epoch,G.encoder, G.decoder,LM)
-load_model(99, G.encoder, G.decoder,loc='/home/ajoshi/coding_ground/lesion-detector/prob_vae/results')
+load_model(99,
+           G.encoder,
+           G.decoder,
+           loc='/home/ajoshi/coding_ground/lesion-detector/prob_vae/results')
 
+out_data = np.zeros(in_data.shape)
 
 G.eval()
 with torch.no_grad():
-    data = Variable(in_data[:10000,]).cuda()
-    mean, logvar, valid_rec = G(data)
 
-    for data in data_loader:
-        data = Variable(data).cuda()
-        mean, logvar, valid_rec = G(data)
+    for i, data in enumerate(tqdm(in_data)):
+        data = Variable(data[None, ]).cuda()
+        mean, logvar, rec = G(data)
+        out_data[i, ] = rec.cpu()
 
-
-
+np.savez('rec_data.npz', out_data=out_data, in_data=in_data)

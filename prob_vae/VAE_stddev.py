@@ -21,7 +21,7 @@ import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
 from VAE_model import Encoder, Decoder, VAE_Generator
-pret = 1
+pret = 0
 random.seed(8)
 
 input_size = 64
@@ -39,37 +39,32 @@ def show_and_save(file_name, img):
 
 def save_model(epoch, encoder, decoder):
     torch.save(decoder.cpu().state_dict(),
-               'results/VAE_decoder_%d.pth' % epoch)
+               'results/VAE_std_decoder_%d.pth' % epoch)
     torch.save(encoder.cpu().state_dict(),
-               'results/VAE_encoder_%d.pth' % epoch)
+               'results/VAE_std_encoder_%d.pth' % epoch)
     decoder.cuda()
     encoder.cuda()
 
 
 def load_model(epoch, encoder, decoder, loc):
     #  restore models
-    decoder.load_state_dict(torch.load(loc + '/VAE_decoder_%d.pth' % epoch))
+    decoder.load_state_dict(torch.load(loc +
+                                       '/VAE_std_decoder_%d.pth' % epoch))
     decoder.cuda()
-    encoder.load_state_dict(torch.load(loc + '/VAE_encoder_%d.pth' % epoch))
+    encoder.load_state_dict(torch.load(loc +
+                                       '/VAE_std_encoder_%d.pth' % epoch))
     encoder.cuda()
 
 
-d = np.load(
-    '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data__maryland_histeq.npz'
-)
-X = d['data']
-X = X[0:2380, :, :, :]
+d = np.load('/home/ajoshi/coding_ground/lesion-detector/prob_vae/rec_data.npz')
+Xin = d['in_data']
+Xout = np.abs(d['out_data'] - d['in_data'])
+X = np.concatenate((Xin, Xout), axis=1)
 X_train = X[0:-20 * 20, :, :, :]
 X_valid = X[-20 * 20:, :, :, :]
 
-d = np.load(
-    '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data__TBI_histeq.npz'
-)
-X_train = np.concatenate((X_train, d['data'][0:-20 * 20, :, :, :]))
-X_valid = np.concatenate((X_valid, d['data'][-20 * 20:, :, :, :]))
-
-X_train = np.transpose(X_train[:, ::2, ::2, :], (0, 3, 1, 2))
-X_valid = np.transpose(X_valid[:, ::2, ::2, :], (0, 3, 1, 2))
+#X_train = X_train[:, :, ::2, ::2]
+#X_valid = X_valid[:, :, ::2, ::2]
 
 input = torch.from_numpy(X_train).float()
 validation_data = torch.from_numpy(X_valid).float()
@@ -91,8 +86,6 @@ lr = 3e-4
 beta = 0
 
 #######network################
-epoch = 39
-LM = '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 
 ##########load low res net##########
 G = VAE_Generator(input_channels, hidden_size).cuda()
@@ -101,7 +94,8 @@ opt_enc = optim.Adam(G.parameters(), lr=lr)
 
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
 data = next(iter(Validation_loader))
-fixed_batch = Variable(data).cuda()
+
+fixed_batch = Variable(data[:,:3,:,:]).cuda()
 
 #######losss#################
 
@@ -153,7 +147,11 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
 
 if pret == 1:
-    load_model(499, G.encoder, G.decoder)
+    load_model(
+        99,
+        G.encoder,
+        G.decoder,
+        loc='/home/ajoshi/coding_ground/lesion-detector/prob_vae/results')
 
 pay = 0
 train_loss = 0
@@ -166,11 +164,11 @@ for epoch in range(max_epochs):
         batch_size = data.size()[0]
 
         #print (data.size())
-        datav = Variable(data).cuda()
-        #datav[l2,:,row2:row2+5,:]=0
+        data_in = Variable(data[:, :3, :, :]).cuda()
+        data_out = Variable(data[:, 3:, :, :]).cuda()
 
-        mean, logvar, rec_enc = G(datav)
-        beta_err = beta_loss_function(rec_enc, datav, mean, logvar, beta)
+        mean, logvar, rec_enc = G(data_in)
+        beta_err = beta_loss_function(rec_enc, data_out, mean, logvar, beta)
         err_enc = beta_err
         opt_enc.zero_grad()
         err_enc.backward()
@@ -181,9 +179,11 @@ for epoch in range(max_epochs):
     G.eval()
     with torch.no_grad():
         for data in Validation_loader:
-            data = Variable(data).cuda()
-            mean, logvar, valid_rec = G(data)
-            beta_err = beta_loss_function(valid_rec, data, mean, logvar, beta)
+            data_in = Variable(data[:, :3, :, :]).cuda()
+            data_out = Variable(data[:, 3:, :, :]).cuda()
+            mean, logvar, valid_rec = G(data_in)
+            beta_err = beta_loss_function(valid_rec, data_out, mean, logvar,
+                                          beta)
             valid_loss += beta_err.item()
         valid_loss /= len(Validation_loader.dataset)
 
@@ -201,15 +201,15 @@ for epoch in range(max_epochs):
     train_loss_list.append(train_loss)
     valid_loss_list.append(valid_loss)
     _, _, rec_imgs = G(fixed_batch)
-    show_and_save('results/Input_epoch_%d.png' % epoch,
+    show_and_save('results/Input_epoch_std_%d.png' % epoch,
                   make_grid((fixed_batch.data[:, 2:3, :, :]).cpu(), 8))
-    show_and_save('results/rec_epoch_%d.png' % epoch,
+    show_and_save('results/rec_epoch_std_%d.png' % epoch,
                   make_grid((rec_imgs.data[:, 2:3, :, :]).cpu(), 8))
     samples = G.decoder(fixed_noise)
-    show_and_save('results/samples_epoch_%d.png' % epoch,
+    show_and_save('results/samples_epoch_std_%d.png' % epoch,
                   make_grid((samples.data[:, 2:3, :, :]).cpu(), 8))
     show_and_save(
-        'results/Error_epoch_%d.png' % epoch,
+        'results/Error_epoch_std_%d.png' % epoch,
         make_grid((fixed_batch.data[:, 2:3, :, :] -
                    rec_imgs.data[:, 2:3, :, :]).cpu(), 8))
 

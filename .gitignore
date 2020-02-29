@@ -1,3 +1,7 @@
+*.json
+*ubyte
+*.pt
+*.pth
 *.nii.gz
 *.h5
 *.png
