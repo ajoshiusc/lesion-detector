@@ -58,7 +58,7 @@ d = np.load(
     '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data__maryland_histeq.npz'
 )
 X = d['data']
-X = X[0:2380, :, :, :]
+#X = X[0:2380, :, :, :]
 X_train = X[0:-20 * 20, :, :, :]
 X_valid = X[-20 * 20:, :, :, :]
 
@@ -85,7 +85,7 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                                 shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 128
+hidden_size = 8
 max_epochs = 100
 lr = 3e-4
 beta = 0
@@ -197,7 +197,7 @@ for epoch in range(max_epochs):
     if (pay == 100):
         break
 
-    print(valid_loss)
+    print('epoch = %d valid_loss= %g' % (epoch, valid_loss))
     train_loss_list.append(train_loss)
     valid_loss_list.append(valid_loss)
     _, _, rec_imgs = G(fixed_batch)

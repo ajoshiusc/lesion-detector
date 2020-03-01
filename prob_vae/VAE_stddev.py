@@ -80,7 +80,7 @@ Validation_loader = torch.utils.data.DataLoader(validation_data,
                                                 shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 128
+hidden_size = 8
 max_epochs = 100
 lr = 3e-4
 beta = 0
@@ -95,7 +95,7 @@ opt_enc = optim.Adam(G.parameters(), lr=lr)
 fixed_noise = Variable(torch.randn(batch_size, hidden_size)).cuda()
 data = next(iter(Validation_loader))
 
-fixed_batch = Variable(data[:,:3,:,:]).cuda()
+fixed_batch = Variable(data[:, :3, :, :]).cuda()
 
 #######losss#################
 
@@ -148,7 +148,7 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
 if pret == 1:
     load_model(
-        99,
+        10,
         G.encoder,
         G.decoder,
         loc='/home/ajoshi/coding_ground/lesion-detector/prob_vae/results')
@@ -197,7 +197,7 @@ for epoch in range(max_epochs):
     if (pay == 100):
         break
 
-    print(valid_loss)
+    print(' epoch: %d, valid_loss: %g' % (epoch, valid_loss))
     train_loss_list.append(train_loss)
     valid_loss_list.append(valid_loss)
     _, _, rec_imgs = G(fixed_batch)
