@@ -61,7 +61,7 @@ data_loader = torch.utils.data.DataLoader(in_data,
                                           shuffle=True)
 ###### define constant########
 input_channels = 3
-hidden_size = 128
+hidden_size = 8
 max_epochs = 100
 lr = 3e-4
 beta = 0
@@ -73,7 +73,7 @@ LM = '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 ##########load low res net##########
 G = VAE_Generator(input_channels, hidden_size).cuda()
 #load_model(epoch,G.encoder, G.decoder,LM)
-load_model(99,
+load_model(10,
            G.encoder,
            G.decoder,
            loc='/home/ajoshi/coding_ground/lesion-detector/prob_vae/results')
