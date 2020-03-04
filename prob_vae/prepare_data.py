@@ -73,7 +73,7 @@ LM = '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
 ##########load low res net##########
 G = VAE_Generator(input_channels, hidden_size).cuda()
 #load_model(epoch,G.encoder, G.decoder,LM)
-load_model(10,
+load_model(24,
            G.encoder,
            G.decoder,
            loc='/home/ajoshi/coding_ground/lesion-detector/prob_vae/results')

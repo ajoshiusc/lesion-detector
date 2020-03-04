@@ -101,8 +101,8 @@ fixed_batch = Variable(data[:, :3, :, :]).cuda()
 
 
 def MSE_loss(Y, X):
-    msk = torch.tensor(X > 1e-6).float()
-    ret = ((X - Y)**2) * msk
+#    msk = torch.tensor(X > 1e-6).float()
+    ret = ((X - Y)**2)# * msk
     ret = torch.sum(ret, 1)
     return ret
 
@@ -118,7 +118,7 @@ def BMSE_loss(Y, X, beta, sigma, Dim):
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def beta_loss_function(recon_x, x, mu, logvar, beta):
-    msk = torch.tensor(x > 1e-6).float()
+    # msk = torch.tensor(x > 1e-6).float()
 
     if beta > 0:
         sigma = 1
@@ -135,12 +135,12 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
     w_variance = torch.sum(
         torch.pow(
-            recon_x[:, :, :, :-1] * msk[:, :, :, :-1] -
-            recon_x[:, :, :, 1:] * msk[:, :, :, 1:], 2))
+            recon_x[:, :, :, :-1] - # * msk[:, :, :, :-1] -
+            recon_x[:, :, :, 1:],2)) #* msk[:, :, :, 1:], 2))
     h_variance = torch.sum(
         torch.pow(
-            recon_x[:, :, :-1, :] * msk[:, :, :-1, :] -
-            recon_x[:, :, 1:, :] * msk[:, :, 1:, :], 2))
+            recon_x[:, :, :-1, :] - # * msk[:, :, :-1, :] -
+            recon_x[:, :, 1:, :], 2)) # * msk[:, :, 1:, :], 2))
     loss = 0.5 * (h_variance + w_variance)
 
     return BBCE + KLD + loss
@@ -148,7 +148,7 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
 
 if pret == 1:
     load_model(
-        10,
+        24,
         G.encoder,
         G.decoder,
         loc='/home/ajoshi/coding_ground/lesion-detector/prob_vae/results')

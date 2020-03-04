@@ -1,20 +1,18 @@
+"""Plot ROCs.
+
+Created on Wed Mar  4 09:44:29 2020
+
+@author: ajoshi
+"""
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from __future__ import print_function
 import numpy as np
-import pywt
 from matplotlib import pyplot as plt
-from pywt._doc_utils import wavedec2_keys, draw_2d_wp_basis
-import argparse
-import h5py
-import numpy as np
-import os
-import time
+
 import torch
 import torch.utils.data
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data.dataset import Dataset
-from torch.autograd import Variable
-from torchvision import datasets, transforms
 from torchvision.utils import make_grid, save_image
 import torchvision.utils as vutils
 from torchvision.utils import save_image
@@ -88,21 +86,20 @@ Validation_loader_inference = torch.utils.data.DataLoader(
 
 ###### define constant########
 input_channels = 3
-hidden_size = 128
+hidden_size = 8
 max_epochs = 100
 lr = 3e-4
 beta = 0
 device = 'cuda'
 #########################################
-epoch = 99
 LM = 'results'
 
 ##########load low res net##########
 Gmean = VAE_Generator(input_channels, hidden_size).cuda()
-load_model(epoch, Gmean.encoder, Gmean.decoder, LM)
+load_model(24, Gmean.encoder, Gmean.decoder, LM)
 
 Gstd = VAE_Generator(input_channels, hidden_size).cuda()
-load_model_std(epoch, Gstd.encoder, Gstd.decoder, LM)
+load_model_std(77, Gstd.encoder, Gstd.decoder, LM)
 
 
 ##########define beta loss##########
@@ -110,9 +107,9 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
     # x = batch_sz x channel x dim1 x dim2
     dim1 = 1
     x_temp = x.repeat(dim1, 1, 1, 1)
-    msk = torch.tensor(x_temp > 1e-6).float()
+    msk = torch.tensor(x_temp > 1e-3).float()
 
-    msk2 = torch.tensor(x_temp > -1).float()
+    msk2 = torch.tensor(x_temp > 1e-3).float()
     NDim = torch.sum(msk2, (1, 2, 3))
     std = var_x.mul(0.5).exp_()
     const = (-torch.sum(var_x * msk, (1, 2, 3))) / 2
@@ -139,7 +136,7 @@ def Validation(X):
     with torch.no_grad():
         for i, data in enumerate(Validation_loader_inference):
             data = (data).to(device)
-            msk = torch.tensor(data > 1e-6).float()
+            msk = torch.tensor(data > -1e6).float()
             seg = X[ind:ind + batch_size, ::2, ::2, 3]
             seg = seg.astype('float32')
             ind = ind + batch_size
@@ -163,7 +160,7 @@ def Validation(X):
             #f_recon_batch = f_recon_batch[:, 2, :, :]
 
             rec_error = ((torch.abs(f_data - f_recon_batch)) /
-                         (1e-32 + var_all**0.5)) * msk[:, 2, :, :]
+                         (1e-6 + var_all**0.5)) * msk[:, 2, :, :]
             sig_plot = ((var_all**(0.5)))
 
             sig_plot = sig_plot * msk[:, 2, :, :]
