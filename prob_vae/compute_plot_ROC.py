@@ -13,22 +13,17 @@ from matplotlib import pyplot as plt
 
 import torch
 import torch.utils.data
-from torchvision.utils import make_grid, save_image
-import torchvision.utils as vutils
 from torchvision.utils import save_image
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
 from sklearn import metrics
-import scipy.signal
-from sklearn.model_selection import train_test_split
-from VAE_model import Encoder, Decoder, VAE_Generator
-import copy
+from VAE_model import VAE_Generator
 import scipy.stats as st
+import math
 
 pret = 0
 
 
 def save_model(epoch, encoder, decoder):
+    """Save the model to a file."""
     torch.save(decoder.cpu().state_dict(),
                'results/VAE_decoder_%d.pth' % epoch)
     torch.save(encoder.cpu().state_dict(),
@@ -38,7 +33,7 @@ def save_model(epoch, encoder, decoder):
 
 
 def load_model(epoch, encoder, decoder, loc):
-    #  restore models
+    """Load the model from a file for mean."""
     decoder.load_state_dict(torch.load(loc + '/VAE_decoder_%d.pth' % epoch))
     decoder.cuda()
     encoder.load_state_dict(torch.load(loc + '/VAE_encoder_%d.pth' % epoch))
@@ -46,7 +41,7 @@ def load_model(epoch, encoder, decoder, loc):
 
 
 def load_model_std(epoch, encoder, decoder, loc):
-    #  restore models
+    """Load the model from a file for stddev."""
     decoder.load_state_dict(torch.load(loc +
                                        '/VAE_std_decoder_%d.pth' % epoch))
     decoder.cuda()
@@ -55,24 +50,21 @@ def load_model_std(epoch, encoder, decoder, loc):
     encoder.cuda()
 
 
-#####read data######################
-#d = np.load('/home/ajoshi/coding_ground/lesion-detector/prob_vae/rec_data.npz')
 d = np.load(
-    '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data_24_ISEL_histeq.npz'
+    '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/\
+data_24_ISEL_histeq.npz'
 )
 X = d['data']
 
 X_data = X[0:15 * 200, ::2, ::2, 0:3]
 max_val = np.max(X)
-#max_val=np.max(max_val,1)
-#max_val=np.reshape(max_val,(-1,1,1,3))
 
 X_data = X_data.astype('float64')
 X_valid = X_data[:, :, :, :]
 D = X_data.shape[1] * X_data.shape[2]
 ####################################
 
-##########train validation split##########
+# train validation split
 batch_size = 8
 
 X_valid = np.transpose(X_valid, (0, 3, 1, 2))
@@ -84,7 +76,7 @@ Validation_loader_inference = torch.utils.data.DataLoader(
 
 ############################################
 
-###### define constant########
+# define constants
 input_channels = 3
 hidden_size = 8
 max_epochs = 100
@@ -94,7 +86,7 @@ device = 'cuda'
 #########################################
 LM = 'results'
 
-##########load low res net##########
+# load low res net
 Gmean = VAE_Generator(input_channels, hidden_size).cuda()
 load_model(24, Gmean.encoder, Gmean.decoder, LM)
 
@@ -102,9 +94,8 @@ Gstd = VAE_Generator(input_channels, hidden_size).cuda()
 load_model_std(77, Gstd.encoder, Gstd.decoder, LM)
 
 
-##########define beta loss##########
 def prob_loss_function(recon_x, var_x, x, mu, logvar):
-    # x = batch_sz x channel x dim1 x dim2
+    """Define prob loss function."""
     dim1 = 1
     x_temp = x.repeat(dim1, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-3).float()
@@ -124,13 +115,9 @@ def prob_loss_function(recon_x, var_x, x, mu, logvar):
     return -BBCE + KLD
 
 
-####################################
-
-
-##########TEST##########
 def Validation(X):
+    """Validation."""
     Gmean.eval()
-    #G2.eval()
     test_loss = 0
     ind = 0
     with torch.no_grad():
@@ -142,22 +129,20 @@ def Validation(X):
             ind = ind + batch_size
             seg = torch.from_numpy(seg)
             seg = (seg).to(device)
-            #_, _, arr_lowrec = G(data)
-            #f_recon_batch = arr_lowrec[:, 2, :, :]*msk[:, 2, :, :]
 
             _, _, rec_enc_mean = Gmean(data)
             _, _, rec_enc_std = Gstd(data)
 
             rec_enc_std[rec_enc_std < 0] = 0
 
-            mu_all = rec_enc_mean  #torch.mean(rec_enc_all.view(100,-1, 3, 64, 64),(0))
-            var_all = rec_enc_std**2  #torch.sum(((rec_enc_all.view(100,-1, 3, 64, 64)-mu_all)**2),(0))/99
+            mu_all = rec_enc_mean
+            # torch.mean(rec_enc_all.view(100,-1, 3, 64, 64),(0))
+            var_all = rec_enc_std**2
 
             f_recon_batch = mu_all[:, 2, :, :] * msk[:, 2, :, :]
             var_all = var_all[:, 2, :, :] * msk[:, 2, :, :]
 
             f_data = data[:, 2, :, :] * msk[:, 2, :, :]
-            #f_recon_batch = f_recon_batch[:, 2, :, :]
 
             rec_error = ((torch.abs(f_data - f_recon_batch)) /
                          (1e-6 + var_all**0.5)) * msk[:, 2, :, :]
@@ -165,24 +150,22 @@ def Validation(X):
 
             sig_plot = sig_plot * msk[:, 2, :, :]
 
-            #rec_error=torch.mean(rec_error,1)
             if i < 20:
                 n = min(f_data.size(0), 100)
                 err_rec = (rec_error.view(batch_size, 1, 64, 64)[:n])
 
-                ##########median filtering#############
+                # median filtering
                 median = (err_rec).to('cpu')
                 median = median.numpy()
                 median = 1 - st.norm.sf(
-                    abs(median)) * 2  #Is it one way or two way?
+                    abs(median)) * 2  # Is it one way or two way?
 
-                #median = scipy.signal.medfilt(median, (1, 1, 7, 7))
                 scale = 0.05 / (64 * 64)
                 median[median < 1 - scale] = 0
                 median = median.astype('float32')
                 err_rec = torch.from_numpy(median)
                 err_rec = (err_rec).to(device)
-                ############save_images##############
+                # save_images
                 comparison = torch.cat([
                     f_data.view(batch_size, 1, 64, 64)[:n],
                     f_recon_batch.view(batch_size, 1, 64, 64)[:n],
@@ -200,7 +183,6 @@ def Validation(X):
                 rec_error_all = rec_error
             else:
                 rec_error_all = torch.cat([rec_error_all, rec_error])
-    #test_loss /= len(Validation_loader.dataset)
     print('====> Test set loss: {:.4f}'.format(test_loss))
     return rec_error_all
 
@@ -211,7 +193,7 @@ if __name__ == "__main__":
     y_true = np.reshape(y_true, (-1, 1))
 
     maskX = np.reshape(X[0:15 * 200, ::2, ::2, 2], (-1, 1))
-    y_true = y_true[maskX > 0]
+    y_true = y_true*(maskX > 0)
 
     y_probas = (rec_error_all).to('cpu')
     y_probas = y_probas.numpy()
@@ -220,12 +202,10 @@ if __name__ == "__main__":
 
     print(np.min(y_probas))
     print(np.max(y_probas))
-    #y_probas = np.clip(y_probas, 0, 1)
 
     y_probas = np.reshape(y_probas, (-1, 1, 64, 64))
-    #y_probas=scipy.signal.medfilt(y_probas,(1,1,7,7))
     y_probas = np.reshape(y_probas, (-1, 1))
-    y_probas = y_probas[maskX > 0]
+    y_probas = y_probas*(maskX > 0)
 
     fpr, tpr, th = metrics.roc_curve(y_true, y_probas)
     L = fpr / tpr
@@ -246,5 +226,4 @@ if __name__ == "__main__":
         seg = y_probas[i, :]
         gth = y_true[i, :]
         dice += np.sum(seg[gth == 1]) * 2.0 / (np.sum(gth) + np.sum(seg))
-        #print((dice))
     print((dice) / y_probas.shape[0])
