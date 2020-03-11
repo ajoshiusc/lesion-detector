@@ -257,7 +257,7 @@ lr = 3e-4
 beta = 0
 device='cuda'
 #########################################
-epoch=399
+epoch=49
 LM='/big_disk/akrami/Projects/lesion_detector_data/VAE_GAN/figs_VAE'
 
 ##########load low res net##########

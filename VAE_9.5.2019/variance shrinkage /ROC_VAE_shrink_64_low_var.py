@@ -55,6 +55,8 @@ max_val=np.max(X)
 X_data = X_data.astype('float64')
 X_valid=X_data[:,:,:,:]
 D=X_data.shape[1]*X_data.shape[2]
+logvar_const=-1.54
+var_enc=torch.from_numpy(np.zeros((1))).cuda()+logvar_const
 ####################################
 
 
@@ -84,8 +86,8 @@ lr = 3e-4
 beta =0
 device='cuda'
 #########################################
-epoch=99
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/variance shrinkage /results/VAE_vanilla'
+epoch=29
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/variance shrinkage /results/vanilla_sigma1'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -94,38 +96,33 @@ load_model(epoch,G.encoder, G.decoder,LM)
 
 
 ##########define beta loss##########
-
-def MSE_loss(Y, X):
-    msk = torch.tensor(X > 1e-6).float()
-    ret = ((X- Y) ** 2)*msk
-    ret = torch.sum(ret,1)
-    return ret 
-def BMSE_loss(Y, X, beta,sigma,Dim):
-    term1 = -((1+beta) / beta)
-    K1=1/pow((2*math.pi*( sigma** 2)),(beta*Dim/2))
-    term2=MSE_loss(Y, X)
-    term3=torch.exp(-(beta/(2*( sigma** 2)))*term2)
-    loss1=torch.sum(term1*(K1*term3-1))
-    return loss1
+def prob_loss_function(recon_x, var_x, x, mu, logvar):
+    # x = batch_sz x channel x dim1 x dim2
+    dim1=1
+    x_temp = x.repeat(dim1, 1, 1, 1)
+    msk = torch.tensor(x_temp > 1e-6).float()
+    
 
 
+    msk2 = torch.tensor(x_temp > -1).float()
+    NDim = torch.sum(msk2,(1,2,3))
+    std = var_x.mul(0.5).exp_()
+    const = (-torch.sum(var_x*msk, (1, 2, 3))) / 2
 
-# Reconstruction + KL divergence losses summed over all elements and batch
 
-def beta_loss_function(recon_x, x, mu, logvar, beta):
 
-    if beta > 0:
-        sigma=1
-        # If beta is nonzero, use the beta entropy
-        BBCE = BMSE_loss(recon_x.view(-1, 128*128*1), x.view(-1, 128*128*1), beta,sigma,128*128*1)
-    else:
-        # if beta is zero use binary cross entropy
-        BBCE = torch.sum(MSE_loss(recon_x.view(-1, 64*64*1),x.view(-1, 64*64*1)))
+    term1 = torch.sum((((recon_x - x_temp)*msk / std)**2), (1, 2, 3))
+    const2 = -(NDim / 2) * math.log((2 * math.pi))
 
-    # compute KL divergence
+    prob_term = const + (-(0.5) * term1) +const2
+    BBCE = torch.sum(prob_term / dim1)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+   
 
-    return BBCE +KLD
+    return -BBCE + KLD
+
+
+
 
 ####################################
 

@@ -12,12 +12,11 @@ import torchvision.utils as vutils
 
 ##########define network##########
 class Encoder(nn.Module):
-    def __init__(self, input_channels, output_channels,representation_size = 64):
+    def __init__(self, input_channels, output_channels, representation_size = 64):
         super(Encoder, self).__init__()
         # input parameters
         self.input_channels = input_channels
         self.output_channels = output_channels
-        #self.dimZ=dimZ
         
         self.features = nn.Sequential(
             # nc x 128x 128
@@ -66,7 +65,6 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.input_size = input_size
         self.representation_size = representation_size
-        #self.dimZ = dimZ
         dim = representation_size[0] * representation_size[1] * representation_size[2]
         
         self.preprocess = nn.Sequential(
@@ -92,7 +90,7 @@ class Decoder(nn.Module):
             # 3 x 128 x 128
         self.activation = nn.Tanh()
         self.relu=nn.ReLU()
-        self.activation2=nn.Sigmoid()    
+        self.soft=nn.Softplus()    
     
     def forward(self, code):
         bs = code.size()[0]
@@ -112,9 +110,9 @@ class Decoder(nn.Module):
         output_mu = self.deconv4(output, output_size=(bs, 3, 64, 64))
         #output_mu= self.activation(output_mu)
 
-        output_logvar = self.deconv5(output, output_size=(bs, 3, 64, 64))
-        output_logvar= -(self.activation2(output_logvar)*2)
-        return output_mu, output_logvar
+        output_var = self.deconv5(output, output_size=(bs, 3, 64, 64))
+        output_var= self.soft(output_var)+ 0.2*0.2
+        return output_mu, output_var
 
 
 
@@ -124,10 +122,9 @@ class VAE_Generator(nn.Module):
         self.input_channels = input_channels
         self.hidden_size = hidden_size
         self.representation_size = representation_size
-        #self.dimZ = dimZ
         
         self.encoder = Encoder(input_channels, hidden_size)
-        self.decoder = Decoder(hidden_size,representation_size)
+        self.decoder = Decoder(hidden_size, representation_size)
         
     def forward(self, x):
         batch_size = x.size()[0]

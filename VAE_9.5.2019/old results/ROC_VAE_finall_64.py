@@ -52,7 +52,7 @@ def load_model(epoch, encoder, decoder, loc):
     encoder.cuda()
 
 #####read data######################
-d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data_24_ISEL_histeq.npz')
+d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data_24_ISEL_histeq.npz')
 X = d['data']
 
 X_data = X[0:15*20, ::2, ::2, 0:3]
@@ -93,7 +93,7 @@ beta =0
 device='cuda'
 #########################################
 epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/VAE_original_final'
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/VAE_original_final'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -159,17 +159,17 @@ def Validation(X):
 
             f_data = data[:, 2, :, :]*msk[:, 2, :, :]
             #f_recon_batch = f_recon_batch[:, 2, :, :]
-            rec_error = torch.abs(f_data - f_recon_batch)*msk[:, 2, :, :]
+            rec_error = (f_data - f_recon_batch)*msk[:, 2, :, :]
             #rec_error=torch.mean(rec_error,1)
             if i<20:
                 n = min(f_data.size(0), 100)
-                err=torch.abs(f_data.view(batch_size,1, 64, 64)[:n] -
+                err=(f_data.view(batch_size,1, 64, 64)[:n] -
                      f_recon_batch.view(batch_size,1, 64, 64)[:n])
                 err=err
                 #err=torch.mean(err,1)
                 median=(err).to('cpu')
                 median=median.numpy()
-                #median=scipy.signal.medfilt(median,(1,1,7,7))
+                median=scipy.signal.medfilt(median,(1,1,7,7))
                 median=median.astype('float32')
                 median = np.clip(median, 0, 1)
     
@@ -218,7 +218,7 @@ if __name__ == "__main__":
    
     
     y_probas = np.reshape(y_probas, (-1, 1,64,64))
-    #y_probas=scipy.signal.medfilt(y_probas,(1,1,7,7))
+    y_probas=scipy.signal.medfilt(y_probas,(1,1,7,7))
     y_probas = np.reshape(y_probas, (-1, 1))
     y_probas = y_probas[maskX > 0]
     

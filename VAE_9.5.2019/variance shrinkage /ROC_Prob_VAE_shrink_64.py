@@ -20,9 +20,11 @@ import torchvision.utils as vutils
 from torchvision.utils import save_image
 import matplotlib.pyplot as plt
 import scipy.signal
-from VAE_model_pixel64 import Encoder,Decoder,VAE_Generator
+from VAE_model_pixel64_shrink import Encoder, Decoder, VAE_Generator
 import scipy.stats as st
 from sklearn import metrics
+
+
 dim1=1
 
 pret=0
@@ -31,19 +33,16 @@ pret=0
     
 def load_model(epoch, encoder, decoder, loc):
     #  restore models
-    decoder.load_state_dict(torch.load(loc+'/VAE_GAN_decoder_%d.pth' % epoch))
+    decoder.load_state_dict(torch.load(loc+'/VAE_decoder_%d.pth' % epoch))
     decoder.cuda()
-    encoder.load_state_dict(torch.load(loc+'/VAE_GAN_encoder_%d.pth' % epoch))
+    encoder.load_state_dict(torch.load(loc+'/VAE_encoder_%d.pth' % epoch))
     encoder.cuda()
   
 
 #####read data######################
-d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/data_24_ISEL_histeq.npz')
+d=np.load('/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data_24_ISEL_histeq.npz')
 X = d['data']
-
 X_data = X[0:15*20, ::2, ::2, 0:3]
-#max_val=np.max(X)
-#X_data = X_data/ max_val
 X_data = X_data.astype('float64')
 X_valid=X_data[:,:,:,:]
 D=X_data.shape[1]*X_data.shape[2]
@@ -53,13 +52,9 @@ D=X_data.shape[1]*X_data.shape[2]
 
 ##########train validation split##########
 batch_size=8
-
-
 X_valid = np.transpose(X_valid, (0, 3, 1,2))
 validation_data_inference = torch.from_numpy(X_valid).float()
 validation_data_inference= validation_data_inference.to('cuda') 
-
-
 Validation_loader = torch.utils.data.DataLoader(validation_data_inference,
                                           batch_size=batch_size,
                                           shuffle=False)
@@ -78,8 +73,8 @@ lr = 3e-3
 beta = 0
 device='cuda'
 #########################################
-epoch=39
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Prob_VAE_original_final'
+epoch=4
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/variance shrinkage /results/Pob_VAE_1_sample_z'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -91,69 +86,31 @@ load_model(epoch,G.encoder, G.decoder,LM)
 ##########define prob loss##########
 #######losss#################
 
-
-
-
-
-
 def prob_loss_function(recon_x, var_x, x, mu, logvar):
     # x = batch_sz x channel x dim1 x dim2
-    
+    dim1=1
     x_temp = x.repeat(dim1, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
-    NDim = torch.sum(msk,(1,2,3))
+    mskvar = torch.tensor(x_temp < 1e-6).float()
 
+
+    msk2 = torch.tensor(x_temp > -1).float()
+    NDim = torch.sum(msk2,(1,2,3))
     std = var_x.mul(0.5).exp_()
-    #std_all=torch.prod(std,dim=1)
-    const = (-torch.sum(var_x*msk, (1, 2, 3))) / 2
-    #const=const.repeat(10,1,1,1) ##check if it is correct
+    const = (-torch.sum(var_x*msk+mskvar, (1, 2, 3))) / 2
+
 
 
     term1 = torch.sum((((recon_x - x_temp)*msk / std)**2), (1, 2, 3))
-    const2 = -(NDim / 2) * math.log((2 * math.pi))
+    #const2 = -(NDim / 2) * math.log((2 * math.pi))
 
-    #term2=torch.log(const+0.0000000000001)
-    prob_term = const + (-(0.5) * term1) + const2
-
+    prob_term = const + (-(0.5) * term1) #+const2
     BBCE = torch.sum(prob_term / dim1)
-
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    #w_variance = torch.sum(torch.pow(recon_x[:,:,:,:-1] - recon_x[:,:,:,1:], 2))
-    #h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
-    #loss = 0.1 * (h_variance + w_variance)
-
+   
 
     return -BBCE + KLD
 
-
-def gamma_prob_loss_function(recon_x, logvar_x, x, mu, logvar, beta):
-    x_temp = x.repeat(10, 1, 1, 1)
-    msk = torch.tensor(x_temp > 1e-6).float()
-    NDim = torch.sum(msk)
-
-    std = logvar_x.mul(0.5).exp_()
-    #std_all=torch.prod(std,dim=1)
-    const = torch.sum(logvar_x * msk, (1, 2, 3)) / 2
-    #const=const.repeat(10,1,1,1) ##check if it is correct
-    const2 = (NDim / 2) * math.log((2 * math.pi))
-
-    term1 = (0.5) * torch.sum((((recon_x - x_temp) * msk / std)**2), (1, 2, 3))
-
-    #term2=torch.log(const+0.0000000000001)
-    term2 = -(beta / (beta + 1)) * torch.sum(logvar_x.mul(0.5)*msk, (1, 2, 3))
-    term3 = -(1 / (beta + 1)) * 0.5 * NDim* (beta * math.log(
-        ((2 * math.pi))) + math.log(beta + 1))
-    prob_term = const + const2 + (term1)  + term2 + term3
-
-    BBCE = torch.sum(prob_term / 10)
-
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-    #w_variance = torch.sum(torch.pow(recon_x[:,:,:,:-1] - recon_x[:,:,:,1:], 2))
-    #h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
-    #loss = 0.1 * (h_variance + w_variance)
-
-    return BBCE + KLD
 
 
 ##########TEST##########
@@ -177,20 +134,19 @@ def Validation(X):
 
             seg[seg != 0] = 1
 
-            tem_rec_enc = rec_enc.view(1, -1, 3, 64, 64)
-            tem_var_enc = var_enc.view(1, -1, 3, 64, 64)
-            std2 = tem_var_enc.exp_()
-            
-            mu_all = torch.mean(tem_rec_enc, (0))
-            std2 = torch.mean(std2, (0))
+            tem_rec_enc = rec_enc.view(-1, 3, 64, 64)
+            tem_var_enc = var_enc.view(-1, 3, 64, 64)
 
-            std_all = std2  #+mu2_all-((mu_all)**2)
+            
+            mu_all = tem_rec_enc
+            std_all =tem_var_enc.exp_()
 
             f_recon_batch = mu_all[:, 2, :, :]
             f_data = data[:, 2, :, :]
             sig_plot = ((std_all**(0.5))[:, 2, :, :])
+            
             z_value = (
-                (f_data - f_recon_batch) / sig_plot + 1e-16) * msk[:, 2, :, :]
+                (f_data - f_recon_batch) / (sig_plot + 1e-16)) * msk[:, 2, :, :]
             sig_plot = sig_plot * msk[:, 2, :, :]
             f_recon_batch = f_recon_batch * msk[:, 2, :, :]
 
@@ -201,12 +157,11 @@ def Validation(X):
                 ##########median filtering#############
                 median = (err_rec).to('cpu')
                 median = median.numpy()
-                median = 1 - st.norm.sf(abs(median)) * 2
+                median = 1 - st.norm.sf(abs(median)) * 2  #Is it one way or two way?
 
-                median = scipy.signal.medfilt(median, (1, 1, 7, 7))
-                scale = 0.05 
+                #median = scipy.signal.medfilt(median, (1, 1, 7, 7))
+                scale = 0.05/(64*64) 
                 median[median < 1 - scale] = 0
-                #median=1-median
                 median = median.astype('float32')
                 err_rec = torch.from_numpy(median)
                 err_rec = (err_rec).to(device)
@@ -216,12 +171,12 @@ def Validation(X):
                     f_recon_batch.view(batch_size, 1, 64, 64)[:n],
                     (f_data.view(batch_size, 1, 64, 64)[:n] -
                      f_recon_batch.view(batch_size, 1, 64, 64)[:n]),
-                    sig_plot.view(batch_size, 1, 64, 64)[:n] ,
+                    sig_plot.view(batch_size, 1, 64, 64)[:n]*5 ,
                     err_rec.view(batch_size, 1, 64, 64)[:n],
                     seg.view(batch_size, 1, 64, 64)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'Prob_VAE_original_final/reconstruction_b_dead' + str(i) + '.png',
+                           'results/reconstruction_b_dead' + str(i) + '.png',
                            nrow=n)
         #############save z values###############
             if i == 0:
@@ -247,10 +202,10 @@ if __name__ == "__main__":
     y_probas = y_probas.numpy()
 
     y_probas = np.reshape(y_probas, (-1, 1, 64, 64))
-    median = 1 - ((st.norm.sf(abs(y_probas)) * 2) / (64 * 64))
+    median = 1 - ((st.norm.sf(abs(y_probas)) * 2))
 
-    #scale=0.05/(64*64)
-    median = scipy.signal.medfilt(median, (1, 1, 7, 7))
+    scale=0.05/(64*64)
+    #median = scipy.signal.medfilt(median, (1, 1, 7, 7))
 
     y_probas = np.reshape(median, (-1, 1))
     print(np.max(y_true))
