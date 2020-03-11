@@ -1,0 +1,1 @@
+VAE_Cbernouli.py :main function for Countinouse bernouli distribution
