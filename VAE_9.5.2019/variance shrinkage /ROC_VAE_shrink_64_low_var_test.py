@@ -24,6 +24,8 @@ from sklearn import metrics
 import scipy.signal
 from sklearn.model_selection import train_test_split
 from VAE_model_pixel_vanilla_shrink import Encoder, Decoder, VAE_Generator
+import copy
+import scipy.stats as st
 
 pret=0
 
@@ -55,6 +57,8 @@ max_val=np.max(X)
 X_data = X_data.astype('float64')
 X_valid=X_data[:,:,:,:]
 D=X_data.shape[1]*X_data.shape[2]
+logvar_const=-1.54
+var_enc=torch.from_numpy(np.zeros((1))).cuda()+logvar_const
 ####################################
 
 
@@ -85,7 +89,7 @@ beta =0
 device='cuda'
 #########################################
 epoch=99
-LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/variance shrinkage /results/VAE_vanilla'
+LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/variance shrinkage /results/VAE_vanilla_sigma0.2'
 
 ##########load low res net##########
 G=VAE_Generator(input_channels, hidden_size).cuda()
@@ -94,38 +98,33 @@ load_model(epoch,G.encoder, G.decoder,LM)
 
 
 ##########define beta loss##########
-
-def MSE_loss(Y, X):
-    msk = torch.tensor(X > 1e-6).float()
-    ret = ((X- Y) ** 2)*msk
-    ret = torch.sum(ret,1)
-    return ret 
-def BMSE_loss(Y, X, beta,sigma,Dim):
-    term1 = -((1+beta) / beta)
-    K1=1/pow((2*math.pi*( sigma** 2)),(beta*Dim/2))
-    term2=MSE_loss(Y, X)
-    term3=torch.exp(-(beta/(2*( sigma** 2)))*term2)
-    loss1=torch.sum(term1*(K1*term3-1))
-    return loss1
+def prob_loss_function(recon_x, var_x, x, mu, logvar):
+    # x = batch_sz x channel x dim1 x dim2
+    dim1=1
+    x_temp = x.repeat(dim1, 1, 1, 1)
+    msk = torch.tensor(x_temp > 1e-6).float()
+    
 
 
+    msk2 = torch.tensor(x_temp > -1).float()
+    NDim = torch.sum(msk2,(1,2,3))
+    std = var_x.mul(0.5).exp_()
+    const = (-torch.sum(var_x*msk, (1, 2, 3))) / 2
 
-# Reconstruction + KL divergence losses summed over all elements and batch
 
-def beta_loss_function(recon_x, x, mu, logvar, beta):
 
-    if beta > 0:
-        sigma=1
-        # If beta is nonzero, use the beta entropy
-        BBCE = BMSE_loss(recon_x.view(-1, 128*128*1), x.view(-1, 128*128*1), beta,sigma,128*128*1)
-    else:
-        # if beta is zero use binary cross entropy
-        BBCE = torch.sum(MSE_loss(recon_x.view(-1, 64*64*1),x.view(-1, 64*64*1)))
+    term1 = torch.sum((((recon_x - x_temp)*msk / std)**2), (1, 2, 3))
+    const2 = -(NDim / 2) * math.log((2 * math.pi))
 
-    # compute KL divergence
+    prob_term = const + (-(0.5) * term1) +const2
+    BBCE = torch.sum(prob_term / dim1)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+   
 
-    return BBCE +KLD
+    return -BBCE + KLD
+
+
+
 
 ####################################
 
@@ -144,42 +143,64 @@ def Validation(X):
             ind = ind + batch_size
             seg = torch.from_numpy(seg)
             seg = (seg).to(device)
-            _, _, arr_lowrec = G(data)
-            f_recon_batch = arr_lowrec[:, 2, :, :]*msk[:, 2, :, :]
+            #_, _, arr_lowrec = G(data)
+            #f_recon_batch = arr_lowrec[:, 2, :, :]*msk[:, 2, :, :]
 
-            
+            for j in range(100):
+                _, _,rec_enc = G(data)
+                if j==0:
+                    rec_enc_all = copy.deepcopy(rec_enc)
+                else:
+                    rec_enc_all=torch.cat([rec_enc_all,rec_enc],0)
+                         
+
+            mu_all = torch.mean(rec_enc_all.view(100,-1, 3, 64, 64),(0))
+            var_all = torch.sum(((rec_enc_all.view(100,-1, 3, 64, 64)-mu_all)**2),(0))/99
+
+            f_recon_batch = mu_all[:, 2, :, :]*msk[:, 2, :, :]
+            var_all=var_all[:, 2, :, :]*msk[:, 2, :, :]
+
+
 
             f_data = data[:, 2, :, :]*msk[:, 2, :, :]
             #f_recon_batch = f_recon_batch[:, 2, :, :]
-            rec_error = torch.abs(f_data - f_recon_batch)*msk[:, 2, :, :]
-            #rec_error=torch.mean(rec_error,1)
-            if i<20:
-                n = min(f_data.size(0), 100)
-                err=torch.abs(f_data.view(batch_size,1, 64, 64)[:n] -
-                     f_recon_batch.view(batch_size,1, 64, 64)[:n])
-                err=err
-                #err=torch.mean(err,1)
-                median=(err).to('cpu')
-                median=median.numpy()
-                #median=scipy.signal.medfilt(median,(1,1,7,7))
-                median=median.astype('float32')
-                median = np.clip(median, 0, 1)
-    
-                err=median
-                err=torch.from_numpy(err)
-                err=(err).to(device)
+            
 
+
+            rec_error=((torch.abs(f_data - f_recon_batch))/(1e-16+var_all**(0.5)))*msk[:, 2, :, :]
+            sig_plot = ((var_all**(0.5)))
+            
+
+            sig_plot = sig_plot * msk[:, 2, :, :]
+
+            #rec_error=torch.mean(rec_error,1)
+            if i < 20:
+                n = min(f_data.size(0), 100)
+                err_rec = (rec_error.view(batch_size, 1, 64, 64)[:n])
+
+                ##########median filtering#############
+                median = (err_rec).to('cpu')
+                median = median.numpy()
+                median = 1 - st.norm.sf(abs(median)) * 2  #Is it one way or two way?
+
+                #median = scipy.signal.medfilt(median, (1, 1, 7, 7))
+                scale = 0.05/(64*64) 
+                median[median < 1 - scale] = 0
+                median = median.astype('float32')
+                err_rec = torch.from_numpy(median)
+                err_rec = (err_rec).to(device)
+                ############save_images##############
                 comparison = torch.cat([
                     f_data.view(batch_size, 1, 64, 64)[:n],
                     f_recon_batch.view(batch_size, 1, 64, 64)[:n],
-                    err.view(batch_size, 1, 64, 64)[:n],
-                    torch.abs(
-                        f_data.view(batch_size, 1, 64, 64)[:n] -
-                        f_recon_batch.view(batch_size, 1, 64, 64)[:n]),
+                    (f_data.view(batch_size, 1, 64, 64)[:n] -
+                     f_recon_batch.view(batch_size, 1, 64, 64)[:n]),
+                    sig_plot.view(batch_size, 1, 64, 64)[:n]*5 ,
+                    err_rec.view(batch_size, 1, 64, 64)[:n],
                     seg.view(batch_size, 1, 64, 64)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'results/reconstruction_bs' +str(i)+ '.png',
+                           'results/reconstruction_b_dead' + str(i) + '.png',
                            nrow=n)
                 
             if i==0:
@@ -206,7 +227,7 @@ if __name__ == "__main__":
 
     print(np.min(y_probas))
     print(np.max(y_probas))
-    y_probas = np.clip(y_probas, 0, 1)
+    #y_probas = np.clip(y_probas, 0, 1)
    
     
     y_probas = np.reshape(y_probas, (-1, 1,64,64))

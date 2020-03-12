@@ -94,7 +94,7 @@ hidden_size = 128
 max_epochs = 40
 lr = 3e-4
 beta =0
-
+dim1=1
 #######network################
 epoch=20
 LM='/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/Brats_results'
@@ -117,30 +117,26 @@ fixed_batch = Variable(data).cuda()
 
 def prob_loss_function(recon_x, var_x, x, mu, logvar):
     # x = batch_sz x channel x dim1 x dim2
-    dim1=1
+    
     x_temp = x.repeat(dim1, 1, 1, 1)
     msk = torch.tensor(x_temp > 1e-6).float()
-    NDim = torch.sum(msk,(1,2,3))
+    mskvar = torch.tensor(x_temp < 1e-6).float()
 
+
+    msk2 = torch.tensor(x_temp > -1).float()
+    NDim = torch.sum(msk2,(1,2,3))
     std = var_x.mul(0.5).exp_()
-    #std_all=torch.prod(std,dim=1)
-    const = (-torch.sum(var_x*msk, (1, 2, 3))) / 2
-    #const=const.repeat(10,1,1,1) ##check if it is correct
+    const = (-torch.sum(var_x*msk+mskvar, (1, 2, 3))) / 2
+
 
 
     term1 = torch.sum((((recon_x - x_temp)*msk / std)**2), (1, 2, 3))
-    const2 = -(NDim / 2) * math.log((2 * math.pi))
+    #const2 = -(NDim / 2) * math.log((2 * math.pi))
 
-    #term2=torch.log(const+0.0000000000001)
-    prob_term = const + (-(0.5) * term1) + const2
-
+    prob_term = const + (-(0.5) * term1) #+const2
     BBCE = torch.sum(prob_term / dim1)
-
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    #w_variance = torch.sum(torch.pow(recon_x[:,:,:,:-1] - recon_x[:,:,:,1:], 2))
-    #h_variance = torch.sum(torch.pow(recon_x[:,:,:-1,:] - recon_x[:,:,1:,:], 2))
-    #loss = 0.1 * (h_variance + w_variance)
-
+   
 
     return -BBCE + KLD
 

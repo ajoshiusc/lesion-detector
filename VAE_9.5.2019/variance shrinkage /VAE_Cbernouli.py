@@ -20,7 +20,8 @@ import random
 import math
 from sklearn.datasets import make_blobs
 from scipy.ndimage import gaussian_filter
-from VAE_model_pixel_vanilla_shrink import Encoder, Decoder, VAE_Generator
+from torch.nn import functional as F
+from VAE_model_pixel_CBernouli import Encoder, Decoder, VAE_Generator
 pret = 0
 random.seed(8)
 
@@ -120,7 +121,12 @@ fixed_batch = Variable(data).cuda()
 
 def MSE_loss(Y, X):
     msk = torch.tensor(X > 1e-6).float()
-    ret = ((X- Y) ** 2)*msk
+    halfmsk = torch.tensor(Y== 1e-6).float()
+    Clambda=halfmsk*2
+    halfmsk = torch.tensor(Y!= 1e-6).float()
+    Clambda=Clambda+halfmsk*
+    ret=F.binary_cross_entropy(Y, X, reduction='sum')
+    ret = ret*msk
     ret = torch.sum(ret,1)
     return ret 
 def BMSE_loss(Y, X, beta,sigma,Dim):
@@ -142,7 +148,7 @@ def beta_loss_function(recon_x, x, mu, logvar, beta):
         BBCE = BMSE_loss(recon_x.view(-1, 64*64*3), x.view(-1, 64*64*3), beta,sigma,64*64*3)
     else:
         # if beta is zero use binary cross entropy
-        BBCE = torch.sum(MSE_loss(recon_x.view(-1, 64*64*3),x.view(-1, 64*64*3)))
+        BBCE = torch.sum(BCE_loss(recon_x.view(-1, 64*64*3),x.view(-1, 64*64*3)))
 
     # compute KL divergence
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
