@@ -1,7 +1,4 @@
 from __future__ import print_function
-
-#import multiprocessing
-#multiprocessing.set_start_method('spawn', True)
 import argparse
 import torch
 import torch.utils.data
@@ -10,6 +7,9 @@ from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
 from keras.datasets import mnist
+import numpy as np
+import multiprocessing
+multiprocessing.set_start_method('spawn', True)
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -45,14 +45,23 @@ torch.manual_seed(args.seed)
 device = torch.device("cuda" if args.cuda else "cpu")
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-
+"""
 (x_train, _), (x_test, _) = mnist.load_data()
 x_train = x_train / 255
 x_train = x_train.astype(float)
 x_test = x_test / 255
 x_test = x_test.astype(float)
-x_train = torch.from_numpy(x_train).float().view(x_train.shape[0],1,28,28)
-x_test = torch.from_numpy(x_test).float().view(x_test.shape[0],1,28,28)
+"""
+d = np.load('results/rec_data_boxes.npz')
+Xin = d['in_data']
+Xout = np.abs(d['out_data'] - d['in_data'])
+X = np.concatenate((Xin, Xout), axis=1)
+x_train = X[0:-10000, :, :, :]
+x_test = X[-10000:, :, :, :]
+
+
+x_train = torch.from_numpy(x_train).float().view(x_train.shape[0], 2, 28, 28)
+x_test = torch.from_numpy(x_test).float().view(x_test.shape[0], 2, 28, 28)
 
 train_loader = torch.utils.data.DataLoader(x_train,
                                            batch_size=args.batch_size,
@@ -116,8 +125,8 @@ def train(epoch):
     for batch_idx, data in enumerate(train_loader):
         data = data.to(device)
         optimizer.zero_grad()
-        recon_batch, mu, logvar = model(data)
-        loss = loss_function(recon_batch, data, mu, logvar)
+        recon_batch, mu, logvar = model(data[:, 0, :, :])
+        loss = loss_function(recon_batch, data[:, 1, :, :], mu, logvar)
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -131,19 +140,19 @@ def train(epoch):
         epoch, train_loss / len(train_loader.dataset)))
 
 
-
 def test(epoch):
     model.eval()
     test_loss = 0
     with torch.no_grad():
         for i, data in enumerate(test_loader):
             data = data.to(device)
-            recon_batch, mu, logvar = model(data)
-            test_loss += loss_function(recon_batch, data, mu, logvar).item()
+            recon_batch, mu, logvar = model(data[:, 0, :, :])
+            test_loss += loss_function(recon_batch,
+                                       data[:, 1, :, :], mu, logvar).item()
             if i == 0:
                 n = min(data.size(0), 8)
                 comparison = torch.cat([
-                    data[:n],
+                    data[:n, 1:2, :, :],
                     recon_batch.view(args.batch_size, 1, 28, 28)[:n]
                 ])
                 save_image(comparison.cpu(),
@@ -163,7 +172,7 @@ if __name__ == "__main__":
             sample = model.decode(sample).cpu()
             save_image(sample.view(64, 1, 28, 28),
                        'results/sample_' + str(epoch) + '.png')
-        
+
     print('saving the model')
-    torch.save(model.state_dict(), 'results/VAE_mean.pth')
+    torch.save(model.state_dict(), 'results/VAE_std.pth')
     print('done')
