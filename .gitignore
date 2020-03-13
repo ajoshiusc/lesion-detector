@@ -1,3 +1,6 @@
+.gitignore
+*.json
+*.pth
 *.nii.gz
 *.h5
 *.png

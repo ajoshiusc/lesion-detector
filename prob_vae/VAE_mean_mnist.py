@@ -147,7 +147,7 @@ def test(epoch):
                     recon_batch.view(args.batch_size, 1, 28, 28)[:n]
                 ])
                 save_image(comparison.cpu(),
-                           'results/reconstruction_' + str(epoch) + '.png',
+                           'results/recon_mean_' + str(epoch) + '.png',
                            nrow=n)
 
     test_loss /= len(test_loader.dataset)
@@ -162,8 +162,10 @@ if __name__ == "__main__":
             sample = torch.randn(64, 20).to(device)
             sample = model.decode(sample).cpu()
             save_image(sample.view(64, 1, 28, 28),
-                       'results/sample_' + str(epoch) + '.png')
+                       'results/sample_std_' + str(epoch) + '.png')
         
     print('saving the model')
     torch.save(model.state_dict(), 'results/VAE_mean.pth')
     print('done')
+    input("Press Enter to continue...")
+
