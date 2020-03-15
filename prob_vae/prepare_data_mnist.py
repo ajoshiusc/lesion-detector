@@ -10,7 +10,7 @@ from keras.datasets import mnist
 import numpy as np
 from tqdm import tqdm
 from torch.autograd import Variable
-
+from vaemodel import VAE
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -55,39 +55,10 @@ x_test = x_test / 255
 x_test = x_test.astype(float)
 
 in_data = np.concatenate((x_train, x_test), axis=0)
-in_data = torch.tensor(in_data).float().view(in_data.shape[0],1,28,28)
+in_data = torch.tensor(in_data).float().view(in_data.shape[0], 1, 28, 28)
 
 #x_train = torch.from_numpy(x_train).float().view(x_train.shape[0],1,28,28)
 #x_test = torch.from_numpy(x_test).float().view(x_test.shape[0],1,28,28)
-
-
-class VAE(nn.Module):
-    def __init__(self):
-        super(VAE, self).__init__()
-
-        self.fc1 = nn.Linear(784, 400)
-        self.fc21 = nn.Linear(400, 20)
-        self.fc22 = nn.Linear(400, 20)
-        self.fc3 = nn.Linear(20, 400)
-        self.fc4 = nn.Linear(400, 784)
-
-    def encode(self, x):
-        h1 = F.relu(self.fc1(x))
-        return self.fc21(h1), self.fc22(h1)
-
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
-    def decode(self, z):
-        h3 = F.relu(self.fc3(z))
-        return torch.sigmoid(self.fc4(h3))
-
-    def forward(self, x):
-        mu, logvar = self.encode(x.view(-1, 784))
-        z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
 
 
 model = VAE().to(device)
@@ -103,6 +74,6 @@ with torch.no_grad():
     for i, data in enumerate(tqdm(in_data)):
         data = data[None, ].to(device)
         rec, mean, logvar = model(data)
-        out_data[i, ] = rec.view(1,28,28).cpu()
+        out_data[i, ] = rec.view(1, 28, 28).cpu()
 
 np.savez('results/rec_data_boxes.npz', out_data=out_data, in_data=in_data)
