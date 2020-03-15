@@ -91,10 +91,15 @@ z_score = in_data-out_mean/out_std
 
 p_value = torch.tensor(scipy.stats.norm.sf(abs(z_score))*2).float()
 
+msk = (in_data.clone().detach() > .1).float()
+p_value = p_value*msk + (1 - msk)
 
 n = 8
-comparison = torch.cat([in_data[:n], out_mean[:n], out_std[:n],
-                        torch.tensor(p_value[:n] < 0.05/786).float()])
+
+pv = p_value[:n].clone().detach()
+sig_msk = (pv < 0.05/786).clone().detach().float()
+comparison = torch.cat([in_data[:n], out_mean[:n], out_std[:n], 1 - p_value[:n],
+                        sig_msk])
 save_image(comparison, 'results/recon_mean_std.png', nrow=n,
            scale_each=False, normalize=False, range=[0, 1])
 
