@@ -71,7 +71,8 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+    #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+    MSE = F.mse_loss(recon_x, x.view(-1, 784),reduction='sum')
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -79,7 +80,7 @@ def loss_function(recon_x, x, mu, logvar):
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BCE + KLD
+    return MSE + KLD
 
 
 def train(epoch):
@@ -133,7 +134,7 @@ if __name__ == "__main__":
             sample = torch.randn(64, 20).to(device)
             sample = model.decode(sample).cpu()
             save_image(sample.view(64, 1, 28, 28),
-                       'results/sample_std_' + str(epoch) + '.png')
+                       'results/sample_mean_' + str(epoch) + '.png')
 
     print('saving the model')
     torch.save(model.state_dict(), 'results/VAE_mean.pth')

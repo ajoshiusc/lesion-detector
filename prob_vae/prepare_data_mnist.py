@@ -20,7 +20,7 @@ parser.add_argument('--batch-size',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs',
                     type=int,
-                    default=50,
+                    default=10,
                     metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda',
@@ -76,4 +76,4 @@ with torch.no_grad():
         rec, mean, logvar = model(data)
         out_data[i, ] = rec.view(1, 28, 28).cpu()
 
-np.savez('results/rec_data_boxes.npz', out_data=out_data, in_data=in_data)
+np.savez('results/rec_data_mnist.npz', out_data=out_data, in_data=in_data)

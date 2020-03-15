@@ -20,7 +20,7 @@ parser.add_argument('--batch-size',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs',
                     type=int,
-                    default=50,
+                    default=10,
                     metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda',
@@ -53,7 +53,7 @@ x_train = x_train.astype(float)
 x_test = x_test / 255
 x_test = x_test.astype(float)
 """
-d = np.load('results/rec_data_boxes.npz')
+d = np.load('results/rec_data_mnist.npz')
 Xin = d['in_data']
 Xout = np.abs(d['out_data'] - d['in_data'])
 X = np.concatenate((Xin, Xout), axis=1)
@@ -80,7 +80,8 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+    #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+    MSE = 100*F.mse_loss(recon_x, x.view(-1, 784), reduction='sum')
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -88,7 +89,7 @@ def loss_function(recon_x, x, mu, logvar):
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BCE + KLD
+    return MSE + KLD
 
 
 def train(epoch):
@@ -124,7 +125,7 @@ def test(epoch):
             if i == 0:
                 n = min(data.size(0), 8)
                 comparison = torch.cat([
-                    data[:n, 1:2, :, :],
+                    data[:n, 0:1, :, :], data[:n, 1:2, :, :],
                     recon_batch.view(args.batch_size, 1, 28, 28)[:n]
                 ])
                 save_image(comparison.cpu(),
