@@ -12,7 +12,7 @@ from tqdm import tqdm
 from torch.autograd import Variable
 import scipy.stats
 from vaemodel import VAE
-
+from utils import make_lesion
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -76,6 +76,9 @@ model_std.eval()
 with torch.no_grad():
 
     for i, data in enumerate(tqdm(in_data)):
+        # add artificial lesion
+        data[0, :, :] = data[0, :, :] + \
+            torch.tensor(make_lesion(data[0, :, :]))
         data = data[None, ].to(device)
         rec, mean, logvar = model_mean(data)
         out_mean[i, ] = rec.view(1, 28, 28).cpu()
@@ -89,7 +92,7 @@ np.savez('results/rec_mean_std.npz', out_mean=out_mean,
 
 z_score = in_data-out_mean/out_std
 
-p_value = torch.tensor(scipy.stats.norm.sf(abs(z_score))*2).float()
+p_value = torch.tensor(scipy.stats.norm.sf(z_score)).float()
 
 msk = ((in_data.clone().detach() > .1) | (
     out_mean.clone().detach() > .1)).float()
@@ -98,8 +101,8 @@ p_value = p_value*msk + (1 - msk)
 n = 8
 
 pv = p_value[:n].clone().detach()
-sig_msk = (pv < 0.05/786).clone().detach().float()
-comparison = torch.cat([in_data[:n], out_mean[:n], out_std[:n], 1 - p_value[:n],
+sig_msk = (pv < 0.05).clone().detach().float()
+comparison = torch.cat([in_data[:n], out_mean[:n], out_std[:n], z_score[:n],
                         sig_msk])
 save_image(comparison, 'results/recon_mean_std.png', nrow=n,
            scale_each=False, normalize=False, range=[0, 1])
