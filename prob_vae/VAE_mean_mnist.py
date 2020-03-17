@@ -11,6 +11,7 @@ from torchvision import datasets, transforms
 from torchvision.utils import save_image
 from keras.datasets import mnist
 from vaemodel import VAE
+from sklearn.model_selection import train_test_split
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -47,9 +48,11 @@ device = torch.device("cuda" if args.cuda else "cpu")
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
-(x_train, _), (x_test, _) = mnist.load_data()
-x_train = x_train / 255
-x_train = x_train.astype(float)
+(X, _), (_, _) = mnist.load_data()
+X = X / 255
+X = X.astype(float)
+x_train, x_test = train_test_split(X)
+
 x_test = x_test / 255
 x_test = x_test.astype(float)
 x_train = torch.from_numpy(x_train).float().view(x_train.shape[0], 1, 28, 28)

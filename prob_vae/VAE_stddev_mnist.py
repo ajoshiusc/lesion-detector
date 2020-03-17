@@ -8,9 +8,11 @@ from torchvision import datasets, transforms
 from torchvision.utils import save_image
 from keras.datasets import mnist
 import numpy as np
-import multiprocessing
+#import multiprocessing
 from vaemodel import VAE
-multiprocessing.set_start_method('spawn', True)
+from sklearn.model_selection import train_test_split
+
+#multiprocessing.set_start_method('spawn', True)
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -35,7 +37,7 @@ parser.add_argument('--seed',
 parser.add_argument(
     '--log-interval',
     type=int,
-    default=10,
+    default=50,
     metavar='N',
     help='how many batches to wait before logging training status')
 args = parser.parse_args()

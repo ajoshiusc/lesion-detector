@@ -11,6 +11,8 @@ import numpy as np
 from tqdm import tqdm
 from torch.autograd import Variable
 from vaemodel import VAE
+from sklearn.model_selection import train_test_split
+
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -20,7 +22,7 @@ parser.add_argument('--batch-size',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs',
                     type=int,
-                    default=10,
+                    default=50,
                     metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda',
@@ -47,7 +49,13 @@ device = torch.device("cuda" if args.cuda else "cpu")
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
-(x_train, _), (x_test, _) = mnist.load_data()
+
+#(x_train, _), (x_test, _) = mnist.load_data()
+
+(X, _), (_, _) = mnist.load_data()
+X = X / 255
+X = X.astype(float)
+x_train, x_test = train_test_split(X)
 
 x_train = x_train / 255
 x_train = x_train.astype(float)
