@@ -51,10 +51,10 @@ kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 (X, _), (_, _) = mnist.load_data()
 X = X / 255
 X = X.astype(float)
-x_train, x_test = train_test_split(X)
+x_train, x_test = train_test_split(X, test_size=0.25)
 
-x_test = x_test / 255
-x_test = x_test.astype(float)
+#x_test = x_test / 255
+#x_test = x_test.astype(float)
 x_train = torch.from_numpy(x_train).float().view(x_train.shape[0], 1, 28, 28)
 x_test = torch.from_numpy(x_test).float().view(x_test.shape[0], 1, 28, 28)
 
@@ -67,7 +67,6 @@ test_loader = torch.utils.data.DataLoader(x_test,
                                           shuffle=True,
                                           **kwargs)
 
-
 model = VAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
@@ -75,7 +74,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
     #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
-    MSE = F.mse_loss(recon_x, x.view(-1, 784),reduction='sum')
+    MSE = F.mse_loss(recon_x, x.view(-1, 784), reduction='sum')
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -142,5 +141,5 @@ if __name__ == "__main__":
     print('saving the model')
     torch.save(model.state_dict(), 'results/VAE_mean.pth')
     print('done')
-    
+
     input("Press Enter to continue...")

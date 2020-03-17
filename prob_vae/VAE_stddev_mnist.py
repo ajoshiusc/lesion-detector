@@ -57,11 +57,13 @@ x_test = x_test.astype(float)
 """
 d = np.load('results/rec_data_mnist.npz')
 Xin = d['in_data']
-Xout = np.abs(d['out_data'] - d['in_data'])
-X = np.concatenate((Xin, Xout), axis=1)
-x_train = X[0:-10000, :, :, :]
-x_test = X[-10000:, :, :, :]
 
+Xout = 2*np.abs(d['out_data'] - d['in_data']) # multipled by 2 to have good scale
+X = np.concatenate((Xin, Xout), axis=1)
+#x_train = X[0:-10000, :, :, :]
+#x_test = X[-10000:, :, :, :]
+
+x_train, x_test = train_test_split(X, test_size=0.25)
 
 x_train = torch.from_numpy(x_train).float().view(x_train.shape[0], 2, 28, 28)
 x_test = torch.from_numpy(x_test).float().view(x_test.shape[0], 2, 28, 28)
@@ -75,15 +77,14 @@ test_loader = torch.utils.data.DataLoader(x_test,
                                           shuffle=True,
                                           **kwargs)
 
-
 model = VAE().to(device)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
     #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
-    MSE = 100*F.mse_loss(recon_x, x.view(-1, 784), reduction='sum')
+    MSE = F.mse_loss(recon_x, x.view(-1, 784), reduction='sum')
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -122,8 +123,8 @@ def test(epoch):
         for i, data in enumerate(test_loader):
             data = data.to(device)
             recon_batch, mu, logvar = model(data[:, 0, :, :])
-            test_loss += loss_function(recon_batch,
-                                       data[:, 1, :, :], mu, logvar).item()
+            test_loss += loss_function(recon_batch, data[:, 1, :, :], mu,
+                                       logvar).item()
             if i == 0:
                 n = min(data.size(0), 8)
                 comparison = torch.cat([

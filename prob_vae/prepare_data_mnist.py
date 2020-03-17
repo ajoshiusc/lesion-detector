@@ -55,14 +55,14 @@ kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 (X, _), (_, _) = mnist.load_data()
 X = X / 255
 X = X.astype(float)
-x_train, x_test = train_test_split(X)
+#x_train, x_test = train_test_split(X)
 
-x_train = x_train / 255
+'''x_train = x_train / 255
 x_train = x_train.astype(float)
 x_test = x_test / 255
-x_test = x_test.astype(float)
+x_test = x_test.astype(float)'''
 
-in_data = np.concatenate((x_train, x_test), axis=0)
+in_data = X #np.concatenate((x_train, x_test), axis=0)
 in_data = torch.tensor(in_data).float().view(in_data.shape[0], 1, 28, 28)
 
 #x_train = torch.from_numpy(x_train).float().view(x_train.shape[0],1,28,28)

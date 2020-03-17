@@ -61,7 +61,6 @@ in_data = torch.tensor(in_data).float().view(in_data.shape[0], 1, 28, 28)
 #x_train = torch.from_numpy(x_train).float().view(x_train.shape[0],1,28,28)
 #x_test = torch.from_numpy(x_test).float().view(x_test.shape[0],1,28,28)
 
-
 model_mean = VAE().to(device)
 model_std = VAE().to(device)
 
@@ -84,39 +83,48 @@ with torch.no_grad():
         rec, mean, logvar = model_mean(data)
         out_mean[i, ] = rec.view(1, 28, 28).cpu()
         rec, mean, logvar = model_std(data)
-        out_std[i, ] = rec.view(1, 28, 28).cpu()
+        out_std[i, ] = rec.view(1, 28, 28).cpu() / 2
+        # division by 2 to compensate for multiplication ny 2 in the std dev autoencoder code
 
+np.savez('results/rec_mean_std.npz',
+         out_mean=out_mean,
+         out_std=out_std,
+         in_data=in_data)
 
-np.savez('results/rec_mean_std.npz', out_mean=out_mean,
-         out_std=out_std, in_data=in_data)
-
-
-z_score = (in_data-out_mean)/out_std
+z_score = (in_data - out_mean) / out_std
 
 p_value = torch.tensor(scipy.stats.norm.sf(z_score)).float()
 
 p_value_orig = p_value.clone()
 
 for ns in tqdm(range(p_value.shape[0])):
-    fdrres = multipletests(p_value[ns, 0, :, :].flatten(
-    ), alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+    fdrres = multipletests(p_value[ns, 0, :, :].flatten(),
+                           alpha=0.05,
+                           method='fdr_bh',
+                           is_sorted=False,
+                           returnsorted=False)
     p_value[ns, 0, :, :] = torch.tensor(fdrres[1]).reshape((28, 28))
 
-msk = ((in_data.clone().detach() > .01) | (
-    out_mean.clone().detach() > .01)).float()
+msk = ((in_data.clone().detach() > .01) |
+       (out_mean.clone().detach() > .01)).float()
 #p_value = p_value*msk + (1 - msk)
 
 n = 8
 
 pv = p_value[:n].clone().detach()
 
-
 sig_msk = (pv < 0.05).clone().detach().float()
-comparison = torch.cat([in_data[:n], out_mean[:n], abs(
-    in_data[:n] - out_mean[:n]), out_std[:n], z_score[:n]/3.0, 1-p_value_orig[:n], sig_msk])
+comparison = torch.cat([
+    in_data[:n], out_mean[:n],
+    abs(in_data[:n] - out_mean[:n]), out_std[:n], z_score[:n] / 3.0,
+    1 - p_value_orig[:n], sig_msk
+])
 
-save_image(comparison, 'results/recon_mean_std.png', nrow=n,
-           scale_each=False, normalize=True, range=(0, 1))
-
+save_image(comparison,
+           'results/recon_mean_std.png',
+           nrow=n,
+           scale_each=False,
+           normalize=True,
+           range=(0, 1))
 
 input("Press Enter to continue...")
