@@ -13,6 +13,7 @@ from torch.autograd import Variable
 import scipy.stats
 from vaemodel import VAE
 from utils import make_lesion
+from statsmodels.stats.multitest import multipletests
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -90,22 +91,32 @@ np.savez('results/rec_mean_std.npz', out_mean=out_mean,
          out_std=out_std, in_data=in_data)
 
 
-z_score = in_data-out_mean/out_std
+z_score = (in_data-out_mean)/out_std
 
 p_value = torch.tensor(scipy.stats.norm.sf(z_score)).float()
 
-msk = ((in_data.clone().detach() > .1) | (
-    out_mean.clone().detach() > .1)).float()
-p_value = p_value*msk + (1 - msk)
+p_value_orig = p_value.clone()
+
+for ns in tqdm(range(p_value.shape[0])):
+    fdrres = multipletests(p_value[ns, 0, :, :].flatten(
+    ), alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+    p_value[ns, 0, :, :] = torch.tensor(fdrres[1]).reshape((28, 28))
+
+msk = ((in_data.clone().detach() > .01) | (
+    out_mean.clone().detach() > .01)).float()
+#p_value = p_value*msk + (1 - msk)
 
 n = 8
 
 pv = p_value[:n].clone().detach()
+
+
 sig_msk = (pv < 0.05).clone().detach().float()
-comparison = torch.cat([in_data[:n], out_mean[:n], out_std[:n], z_score[:n],
-                        sig_msk])
+comparison = torch.cat([in_data[:n], out_mean[:n], abs(
+    in_data[:n] - out_mean[:n]), out_std[:n], z_score[:n]/3.0, 1-p_value_orig[:n], sig_msk])
+
 save_image(comparison, 'results/recon_mean_std.png', nrow=n,
-           scale_each=False, normalize=False, range=[0, 1])
+           scale_each=False, normalize=True, range=(0, 1))
 
 
 input("Press Enter to continue...")
