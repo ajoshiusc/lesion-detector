@@ -22,7 +22,7 @@ parser.add_argument('--batch-size',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs',
                     type=int,
-                    default=50,
+                    default=10,
                     metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda',
@@ -37,7 +37,7 @@ parser.add_argument('--seed',
 parser.add_argument(
     '--log-interval',
     type=int,
-    default=10,
+    default=50,
     metavar='N',
     help='how many batches to wait before logging training status')
 args = parser.parse_args()

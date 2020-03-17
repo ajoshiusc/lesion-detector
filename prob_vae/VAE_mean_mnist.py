@@ -142,4 +142,5 @@ if __name__ == "__main__":
     print('saving the model')
     torch.save(model.state_dict(), 'results/VAE_mean.pth')
     print('done')
+    
     input("Press Enter to continue...")
