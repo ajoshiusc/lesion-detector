@@ -1,7 +1,4 @@
 from __future__ import print_function
-
-# import multiprocessing
-# multiprocessing.set_start_method('spawn', True)
 import argparse
 import torch
 import torch.utils.data
@@ -10,9 +7,12 @@ from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
 from keras.datasets import mnist
+import numpy as np
+#import multiprocessing
 from vaemodel_brain import VAE_Generator as VAE
 from sklearn.model_selection import train_test_split
-import numpy as np
+
+#multiprocessing.set_start_method('spawn', True)
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size',
@@ -37,7 +37,7 @@ parser.add_argument('--seed',
 parser.add_argument(
     '--log-interval',
     type=int,
-    default=50,
+    default=40,
     metavar='N',
     help='how many batches to wait before logging training status')
 args = parser.parse_args()
@@ -48,54 +48,46 @@ torch.manual_seed(args.seed)
 device = torch.device("cuda" if args.cuda else "cpu")
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-
-d = np.load(
-    '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data__maryland_histeq.npz')
-X = d['data']
-X = X[0:2380, :, :, :]
-X_train = X[0:-20*20, :, :, :]
-X_valid = X[-20*20:, :, :, :]
-
-
-d = np.load(
-    '/big_disk/akrami/git_repos_new/lesion-detector/VAE_9.5.2019/old results/data__TBI_histeq.npz')
-X_train = np.concatenate((X_train, d['data'][0:-20*20, :, :, :]))
-X_valid = np.concatenate((X_valid, d['data'][-20*20:, :, :, :]))
-
-x_train = np.transpose(X_train[:, ::2, ::2, :], (0, 3, 1, 2))
-x_test = np.transpose(X_valid[:, ::2, ::2, :], (0, 3, 1, 2))
-
 """
-(X, _), (_, _) = mnist.load_data()
-X = X / 255
-X = X.astype(float)
+(x_train, _), (x_test, _) = mnist.load_data()
+x_train = x_train / 255
+x_train = x_train.astype(float)
+x_test = x_test / 255
+x_test = x_test.astype(float)
+"""
+d = np.load('results/rec_data_brain.npz')
+Xin = d['in_data']
+
+# multipled by 2 to have good scale
+Xout = np.abs(d['out_data'] - d['in_data'])
+X = np.concatenate((Xin, Xout), axis=1)
+#x_train = X[0:-10000, :, :, :]
+#x_test = X[-10000:, :, :, :]
+
 x_train, x_test = train_test_split(X, test_size=0.25)
 
-# x_test = x_test / 255
-# x_test = x_test.astype(float)
-x_train = torch.from_numpy(x_train).float().view(x_train.shape[0], 1, 28, 28)
-x_test = torch.from_numpy(x_test).float().view(x_test.shape[0], 1, 28, 28)
+x_train = torch.from_numpy(x_train).float()
+x_test = torch.from_numpy(x_test).float()
 
-"""
-
-train_loader = torch.utils.data.DataLoader(x_train.astype(np.float32),
+train_loader = torch.utils.data.DataLoader(x_train,
                                            batch_size=args.batch_size,
                                            shuffle=True,
                                            **kwargs)
-test_loader = torch.utils.data.DataLoader(x_test.astype(np.float32),
+test_loader = torch.utils.data.DataLoader(x_test,
                                           batch_size=args.batch_size,
                                           shuffle=True,
                                           **kwargs)
+
 input_channels = 3
 hidden_size = 128
 
 model = VAE(input_channels, hidden_size).to(device)
-optimizer = optim.Adam(model.parameters(), lr=3e-4)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
-    # BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+    #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
     # see Appendix B from VAE paper:
@@ -113,8 +105,8 @@ def train(epoch):
     for batch_idx, data in enumerate(train_loader):
         data = data.to(device)
         optimizer.zero_grad()
-        mu, logvar, recon_batch = model(data)
-        loss = loss_function(recon_batch, data, mu, logvar)
+        mu, logvar, recon_batch = model(data[:, :3, :, :])
+        loss = loss_function(recon_batch, data[:, 3:, :, :], mu, logvar)
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -134,16 +126,16 @@ def test(epoch):
     with torch.no_grad():
         for i, data in enumerate(test_loader):
             data = data.to(device)
-            mu, logvar, recon_batch = model(data)
-            test_loss += loss_function(recon_batch, data, mu, logvar).item()
+            mu, logvar, recon_batch = model(data[:, :3, :, :])
+            test_loss += loss_function(recon_batch, data[:, 3:, :, :], mu,
+                                       logvar).item()
             if i == 0:
                 n = min(data.size(0), 8)
-                comparison = torch.cat([
-                    data[:n, [2], ],
-                    recon_batch.view(args.batch_size, 3, 64, 64)[:n, [2], ]
+                comparison = torch.cat([data[:n, [2], :, :], data[:n, [5], :, :],
+                    recon_batch[:n, [2], :, :]
                 ])
                 save_image(comparison.cpu(),
-                           'results/recon_mean_' + str(epoch) + '.png',
+                           'results/recon_std_' + str(epoch) + '_brain.png',
                            nrow=n)
 
     test_loss /= len(test_loader.dataset)
@@ -156,12 +148,11 @@ if __name__ == "__main__":
         test(epoch)
         with torch.no_grad():
             sample = torch.randn(64, hidden_size).to(device)
-            sample = model.decoder(sample)
-            save_image(sample[:, 2, :, :].view(64, 1, 64, 64),
-                       'results/sample_mean_' + str(epoch) + '.png')
+            sample = model.decoder(sample).cpu()
+            save_image(sample[:, [2], :, :],
+                       'results/sample_std_' + str(epoch) + '_brain.png')
 
     print('saving the model')
-    torch.save(model.state_dict(), 'results/VAE_mean_brain.pth')
+    torch.save(model.state_dict(), 'results/VAE_std_brain.pth')
     print('done')
-
     input("Press Enter to continue...")
