@@ -124,15 +124,15 @@ msk = ((in_data.clone().detach() > .01) |
 p_value = p_value*msk + (1 - msk)
 z_score = z_score*msk + (1 - msk)
 
-n = 64
+n = np.array(range(0,16*16,16))
 
-pv = p_value[:n].clone().detach()
+pv = p_value[n].clone().detach()
 
 sig_msk = (pv < 0.05).clone().detach().float()
 comparison = torch.cat([
-    in_data[:n, [2]], out_mean[:n, [2]],
-    abs(in_data[:n, [2]] - out_mean[:n, [2]]), out_std[:n, [2]],
-    z_score[:n, [2]] / 3.0, sig_msk[:, [2]]
+    in_data[n, [2]], out_mean[n, [2]],
+    abs(in_data[n, [2]] - out_mean[n, [2]]), out_std[n, [2]],
+    z_score[n, [2]] / 3.0, sig_msk[:, [2]]
 ])
 
 save_image(comparison,
