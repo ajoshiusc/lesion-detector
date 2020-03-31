@@ -154,7 +154,7 @@ def test(epoch, Q=0.5):
 
 if __name__ == "__main__":
 
-    for Q in [0.025, 0.975]:
+    for Q in [0.15, 0.5, 0.85]:
         for epoch in range(args.epochs):
             train(epoch, Q)
             test(epoch, Q)
