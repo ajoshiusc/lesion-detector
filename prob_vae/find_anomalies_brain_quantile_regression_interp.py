@@ -14,6 +14,11 @@ import scipy.stats
 from vaemodel_brain import VAE_Generator as VAE
 from utils import make_lesion
 from statsmodels.stats.multitest import multipletests
+#from scipy.interpolate import interp1d
+from scipy.interpolate import griddata
+from  itertools import product
+
+torch.no_grad()
 
 parser = argparse.ArgumentParser(description='VAE Brain Example')
 parser.add_argument('--batch-size',
@@ -74,50 +79,49 @@ in_data = torch.tensor(in_data).float()
 input_channels = 3
 hidden_size = 128
 
-model_median = VAE(input_channels, hidden_size).to(device)
-model_Q1 = VAE(input_channels, hidden_size).to(device)
-model_Q2 = VAE(input_channels, hidden_size).to(device)
+quantiles = np.arange(1e-6, 1 - 1e-6, .05)
+model = VAE(input_channels, hidden_size).to(device)
+out_Q = np.zeros((len(quantiles), *list(in_data.shape)))
 
-model_median.load_state_dict(torch.load('results/VAE_QR_brain_0.5.pth'))
-model_Q1.load_state_dict(torch.load('results/VAE_QR_brain_0.15.pth'))
-model_Q2.load_state_dict(torch.load('results/VAE_QR_brain_0.85.pth'))
+for qt, Q in enumerate(tqdm(quantiles)):  #[0.15, 0.5, 0.85]:
 
-out_median = torch.zeros(in_data.shape)
-out_Q1 = torch.zeros(in_data.shape)
-out_Q2 = torch.zeros(in_data.shape)
-out_std = torch.zeros(in_data.shape)
+    model.load_state_dict(
+        torch.load('results/VAE_QR_brain' + '_' + str(Q) + '.pth'))
 
-model_median.eval()
-model_Q1.eval()
-model_Q2.eval()
+    model.eval()
 
-with torch.no_grad():
-
-    for i, data in enumerate(tqdm(in_data)):
+    for i, data in enumerate(in_data):
         """     add artificial lesion
                 data[0, :, :] = data[0, :, :] + \
             torch.tensor(make_lesion(data[0, :, :]))
         """
         data = data[None, ].to(device)
-        mean, logvar, rec_med = model_median(data)
-        mean, logvar, rec_Q1 = model_Q1(data)
-        mean, logvar, rec_Q2 = model_Q2(data)
-        out_median[i, ] = rec_med
-        out_Q1[i, ] = rec_Q1
-        out_Q2[i, ] = rec_Q2
-        out_std[i, ] = torch.abs(rec_Q1 - rec_Q2) / 2.0
+        mean, logvar, rec_Q = model(data)
+        out_Q[qt, i, ] = rec_Q.cpu().detach()
 
         # division by 2 to compensate for multiplication ny 2 in the std dev autoencoder code
 
-np.savez('results/rec_QR_brain.npz',
-         out_med=out_median,
-         out_Q1=out_Q1,
-         out_Q2=out_Q2,
-         in_data=in_data)
+#out_Q = out_Q.detach().numpy()
+in_data = in_data.numpy()
 
-z_score = (in_data - out_median) / out_std
+np.savez('results/rec_QR_all_brain.npz', out_Q=out_Q, in_data=in_data)
 
-p_value = torch.tensor(scipy.stats.norm.sf(z_score)).float()
+#f = interp1d(quantiles, out_Q, axis=0)
+#p_value = f(in_data)
+
+#loops on all dimensions
+Qr = range(out_Q.shape[1])
+Mr = range(out_Q.shape[2])
+Xr = range(out_Q.shape[3])
+Yr = range(out_Q.shape[4])
+
+p_value = np.zeros(in_data.shape)
+
+for d in tqdm(Qr):
+    for m,x,y in product(Mr,Xr,Yr):
+        p_value[d,m,x,y] = griddata(out_Q[:,d,m,x,y], quantiles, in_data[d,m,x,y])
+
+#p_value = torch.tensor(scipy.stats.norm.sf(z_score)).float()
 
 p_value_orig = p_value.clone()
 
@@ -148,7 +152,7 @@ comparison = torch.cat([
 ])
 
 save_image(comparison,
-           'results/recon_QR_pval_brain.png',
+           'results/recon_QR_all_pval_brain.png',
            nrow=16,
            scale_each=False,
            normalize=True,
@@ -166,7 +170,7 @@ comparison = torch.cat([
 ])
 
 save_image(comparison,
-           'results/recon_QR_brain.png',
+           'results/recon_QR_all_brain.png',
            nrow=16,
            scale_each=False,
            normalize=True,

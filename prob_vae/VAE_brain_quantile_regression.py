@@ -154,17 +154,17 @@ def test(epoch, Q=0.5):
 
 if __name__ == "__main__":
 
-    for Q in [0.15, 0.5, 0.85]:
+    for Q in np.arange(1e-6,1-1e-6,.05):#[0.15, 0.5, 0.85]:
         for epoch in range(args.epochs):
             train(epoch, Q)
-            test(epoch, Q)
+            '''test(epoch, Q)
             with torch.no_grad():
                 sample = torch.randn(64, hidden_size).to(device)
                 sample = model.decoder(sample)
                 save_image(
                     sample[:, 2, :, :].view(64, 1, 64,
                                             64), 'results/sample_mean_' +
-                    str(epoch) + '_' + str(Q) + '.png')
+                    str(epoch) + '_' + str(Q) + '.png')'''
 
         print('saving the model')
         torch.save(model.state_dict(),
