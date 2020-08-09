@@ -16,7 +16,7 @@ from utils import make_lesion
 from statsmodels.stats.multitest import multipletests
 #from scipy.interpolate import interp1d
 from scipy.interpolate import griddata
-from  itertools import product
+from itertools import product
 
 torch.no_grad()
 
@@ -118,12 +118,16 @@ Yr = range(out_Q.shape[4])
 p_value = np.zeros(in_data.shape)
 
 for d in tqdm(Qr):
-    for m,x,y in product(Mr,Xr,Yr):
-        p_value[d,m,x,y] = griddata(out_Q[:,d,m,x,y], quantiles, in_data[d,m,x,y])
+    for m, x, y in product(Mr, Xr, Yr):
+        p_value[d, m, x, y] = griddata(out_Q[:, d, m, x, y],
+                                       quantiles,
+                                       in_data[d, m, x, y],
+                                       method='linear',
+                                       fill_value=0.5)
 
 #p_value = torch.tensor(scipy.stats.norm.sf(z_score)).float()
-
-p_value_orig = p_value.clone()
+'''
+p_value_orig = p_value.copy()
 
 for ns in tqdm(range(p_value.shape[0])):
     fdrres = multipletests(p_value[ns, 2, :, :].flatten(),
@@ -135,42 +139,26 @@ for ns in tqdm(range(p_value.shape[0])):
 
     p_value[ns, 2, :, :] = torch.tensor(fdrres[1]).reshape((64, 64))
 
-msk = ((in_data.clone().detach() > .01) |
-       (out_Q1.clone().detach() > .1)).float()
+'''
+msk = ((in_data > .01))
 p_value = p_value * msk + (1 - msk)
-z_score = z_score * msk + (1 - msk)
 
 n = np.array(range(0, 16 * 16, 16))
 
-pv = p_value[n].clone().detach()
+pv = p_value[n]
 
-sig_msk = (pv < 0.05).clone().detach().float()
+pv[np.isnan(pv)] = 1
+sig_msk = (pv < 0.05).astype(np.float32)
 comparison = torch.cat([
-    in_data[n, 2:3], out_median[n, 2:3], out_Q1[n, 2:3], out_Q2[n, 2:3],
-    3 * out_std[n, 2:3], 3 * abs(in_data[n, 2:3] - out_median[n, 2:3]),
-    z_score[n, 2:3] / 3.0, sig_msk[:, 2:3]
+    torch.tensor(in_data[n, 2:3]),
+    torch.tensor(out_Q[10, n, 2:3].astype(np.float32)),
+    torch.tensor(out_Q[1, n, 2:3].astype(np.float32)),
+    torch.tensor(out_Q[19, n, 2:3].astype(np.float32)),
+    torch.tensor(sig_msk[:, [2]])
 ])
 
 save_image(comparison,
-           'results/recon_QR_all_pval_brain.png',
-           nrow=16,
-           scale_each=False,
-           normalize=True,
-           range=(0, 1))
-#|
-#      (out_median.clone().detach() > .1)).float()
-
-sig_msk = ((in_data > out_Q1) | (in_data < out_Q2)).clone().detach().float()
-sig_msk = msk * sig_msk
-
-n = np.array(range(16))
-comparison = torch.cat([
-    in_data[n, 2:3], out_median[n, 2:3], out_Q1[n, 2:3], out_Q2[n, 2:3],
-    sig_msk[n, 2:3]
-])
-
-save_image(comparison,
-           'results/recon_QR_all_brain.png',
+           'results/recon_sig_all_brain.png',
            nrow=16,
            scale_each=False,
            normalize=True,
